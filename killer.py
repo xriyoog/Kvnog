@@ -33,7 +33,7 @@ HIT_CHANNEL_ID = int(os.environ.get("HIT_CHANNEL_ID", 0))
 STRIPE_SK = os.environ.get("STRIPE_SK", "")
 
 MONGO_URI = os.environ.get("MONGO_URI", "")
-DB_NAME = os.environ.get("DB_NAME", "stresser_db")
+DB_NAME = os.environ.get("DB_NAME", "Kvn")
 PROXY_COLLECTION = os.environ.get("PROXY_COLLECTION", "proxies")
 
 SITE_CONFIG = {
