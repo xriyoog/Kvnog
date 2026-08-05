@@ -1,10 +1,3 @@
-"""
-KVN Killer v3.0 FINAL — Ultra Edition (Railway Ready + Proxy Split + SSL Fix)
-- /kill  -> Donation Gateway Killer (Authorize.net + GiveWP + Payrix) - NO PROXY
-- /chk   -> Stripe Auth Check (Single) - WITH PROXY
-- /mst   -> Stripe Auth Mass Check (15 workers, progress UI, channel hits) - WITH PROXY
-"""
-
 import asyncio
 import logging
 import os
@@ -523,7 +516,7 @@ class KillerGateway:
                 'User-Agent': "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36",
                 'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                 'Cache-Control': "max-age=0",
-                'sec-ch-ua': "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"",
+                'sec-ch-ua': "\"Chromium\";v=\"134\", \"Not:A-Brand\"v=\"24\", \"Google Chrome\";v=\"134\"",
                 'sec-ch-ua-mobile': "?1", 'sec-ch-ua-platform': "\"Android\"",
                 'Upgrade-Insecure-Requests': "1", 'Sec-Fetch-Site': "cross-site",
                 'Sec-Fetch-Mode': "navigate", 'Sec-Fetch-User': "?1",
@@ -609,7 +602,7 @@ class KillerGateway:
                     "killer_status": "Error ❌"}
 
 # ═══════════════════════════════════════
-# UI / FORMATTERS
+# UI / FORMATTERS - SLEEK OVERHAUL
 # ═══════════════════════════════════════
 def sep_mid() -> str:
     return "「 ✦ 」「 ✦ 」「 ✦ 」"
