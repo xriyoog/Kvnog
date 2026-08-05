@@ -1,39 +1,3 @@
-import asyncio
-import logging
-import os
-import re
-import sqlite3
-import random
-import string
-import time
-import json
-import threading
-from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Tuple
-from bs4 import BeautifulSoup
-import aiohttp
-from aiohttp import web
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
-from telegram.constants import ParseMode
-
-# ═══════════════════════════════════════
-# CONFIG (Railway ENV)
-# ═══════════════════════════════════════
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-OWNER_ID = int(os.environ.get("OWNER_ID", 0))
-HIT_CHANNEL_ID = int(os.environ.get("HIT_CHANNEL_ID", 0))
-STRIPE_SK = os.environ.get("STRIPE_SK", "")
-
-MONGO_URI = os.environ.get("MONGO_URI", "")
-DB_NAME = os.environ.get("DB_NAME", "stresser_db")
-PROXY_COLLECTION = os.environ.get("PROXY_COLLECTION", "proxies")
-
-SITE_CONFIG = {
-    "base_url": "https://outbermuda.org/",
-    "form_id": "686",
-    "referer_base": "https://outbermuda.org/",
-    "auth_name": "43D8rvpNZ",
     "auth_client_key": "4yLL27sQ9HhzpHLr27sgfUY4kp894PydK6v24NadbnpX9L4m43Vm4UCX2dwn7D7U",
     "auth_id": "1dcaabea-fa2b-f4f8-631c-d335badfda3f",
 }
