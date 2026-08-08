@@ -4,37 +4,52 @@ from telebot.types import MessageEntity
 TOKEN = "7461340238:AAFrz6L1eA5JR5jkYv6mPPlUiDRg1BjP_Ik"
 bot = telebot.TeleBot(TOKEN)
 
-# -------------------------------------------------
-# Premium emoji IDs: (emoji, custom_emoji_id)
-# -------------------------------------------------
-PREMIUM_EMOJIS = [
-    ("🔥", "5267500801240092311"),
-    ("💳", "6206233180148603109"),
-    ("💵", "6206155797722830770"),
-    ("🚀", "6147654280112248427"),
-    ("⭐️", "6206404510689007446"),
-    ("💔", "5971992406923416087"),
-    ("⚡", "6026367225466720832"),
-    ("💳", "5800709991627232190"),
-    ("💠", "5971837723676249096"),
-    ("✅", "6298612102709909362"),
-    ("❌", "5440681540541502133"),
-    ("⚠️", "5420323339723881652"),
-    ("💰", "6190336264940559752"),
-    ("⏱", "5382194935057372936"),
-    ("🛍️", "5456140674028019486"),
-    ("⚡", "5229064374403998351"),
-    ("👑", "5893473283696759404"),
-    ("👤", "5895652322469482989"),
-    ("⚙️", "5282843764451195532"),
-    ("⏰", "5895713431264170680"),
-    ("💻", "5222079954421818267"),
-    ("⭐", "5042334757040423886"),
-    ("⭐", "5039727497143387500"),
-    ("⭐", "5042176294222037888"),
-    ("⭐", "5042290883949495533"),
-    ("⭐", "5041975203853239332"),
-    ("⭐", "5042101437237036298"),
+# Premium Emoji IDs
+EMOJI_FIRE = "5267500801240092311"        # 🔥
+EMOJI_MONEY = "6206155797722830770"       # 
+EMOJI_CARD = "6206233180148603109"        # 💳
+EMOJI_ROCKET = "6147654280112248427"      # 🚀
+EMOJI_STAR = "6206404510689007446"        # ⭐️
+EMOJI_HEART = "5971992406923416087"       # 💔
+EMOJI_BOLT = "6026367225466720832"        # 
+EMOJI_CHECK = "6298612102709909362"       # ✅
+EMOJI_CROSS = "5440681540541502133"       # ❌
+EMOJI_WARNING = "5420323339723881652"     # ⚠️
+EMOJI_COIN = "6190336264940559752"        # 💰
+EMOJI_TIME = "5382194935057372936"        # ⏱
+
+@bot.message_handler(commands=['start'])
+def start(message):
+    text = "Bot is live 🔥"
+    entity = MessageEntity(
+        type="custom_emoji",
+        offset=12,   # Position of 🔥 emoji
+        length=2,
+        custom_emoji_id=EMOJI_FIRE
+    )
+    bot.send_message(
+        message.chat.id,
+        text,
+        entities=[entity]
+    )
+
+@bot.message_handler(commands=['premium'])
+def premium(message):
+    text = "Premium Features 💎"
+    entity = MessageEntity(
+        type="custom_emoji",
+        offset=17,
+        length=2,
+        custom_emoji_id=EMOJI_STAR
+    )
+    bot.send_message(
+        message.chat.id,
+        text,
+        entities=[entity]
+    )
+
+print("🔥 Premium emoji bot running...")
+bot.infinity_polling()    ("⭐", "5042101437237036298"),
     ("⭐", "5427168083074628963"),
     ("⭐", "5039649904264217620"),
     ("⭐", "5042306247047513767"),
