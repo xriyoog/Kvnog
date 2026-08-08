@@ -1054,7 +1054,7 @@ def format_profile(user_id: int) -> str:
     return (
         f"{title}\n\n"
         f"╭─❲ {e_person} 𝗨𝗦𝗘𝗥 ❳\n"
-        f"├» 🆔 𝗜𝗗: <code>{user.user_id}</code>\n"
+        f"├» custom_emoji_id="5854931759010946555" 𝗜𝗗: <code>{user.user_id}</code>\n"
         f"├» 📛 𝗡𝗮𝗺𝗲: <b>{user.first_name or 'N/A'}</b>\n"
         f"├» 📞 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲: @{user.username or 'N/A'}\n"
         f"╰───────────\n\n"
