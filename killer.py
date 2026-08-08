@@ -1,7 +1,7 @@
 """
-KVN Killer v5.5 — Syntax & Padding Fix
-- Fixed f-string nested quote escaping for Python 3.12+
-- Rewrote box_title padding to account for HTML tags
+KVN Killer v5.6 — F-String Quote Fix
+- Fixed f-string quote nesting for Python 3.12+
+- All f-strings now use double quotes to avoid clashes
 - Pure Single-Kill Mode (Authorize.net + Payrix)
 - Smart Proxy Pool with Health Scoring
 - Full Custom Emoji Integration
@@ -43,7 +43,7 @@ MONGO_URI = os.environ.get("MONGO_URI", "")
 DB_NAME = os.environ.get("DB_NAME", "stresser_db")
 PROXY_COLLECTION = os.environ.get("PROXY_COLLECTION", "proxies")
 
-VERSION = "5.5"
+VERSION = "5.6"
 CODENAME = "Phantom"
 
 SITE_CONFIG = {
@@ -114,10 +114,9 @@ PAYMENT_GATEWAYS = [
 BANNED_BINS = {"535563", "543446", "532610", "485340", "531106", "494116", "516929", "435880", "517608", "416549"}
 
 # ═══════════════════════════════════════
-# FULL CUSTOM EMOJI MAP — ALL EMOJIS
+# FULL CUSTOM EMOJI MAP
 # ═══════════════════════════════════════
 CUSTOM_EMOJIS = {
-    # Batch 2 (primary — newest IDs)
     "⚡": '<tg-emoji emoji-id="5879783483462655267">⚡</tg-emoji>',
     "✅": '<tg-emoji emoji-id="5870702999180942496">✅</tg-emoji>',
     "💳": '<tg-emoji emoji-id="5855210601172705878">💳</tg-emoji>',
@@ -130,7 +129,6 @@ CUSTOM_EMOJIS = {
     "👑": '<tg-emoji emoji-id="5854931759010946555">👑</tg-emoji>',
     "🌚": '<tg-emoji emoji-id="6298678524379137990">🌚</tg-emoji>',
     "🟢": '<tg-emoji emoji-id="5854964615510762741">🟢</tg-emoji>',
-    # Batch 1 (additional emojis)
     "💳1": '<tg-emoji emoji-id="6206233180148603109">💳</tg-emoji>',
     "💳2": '<tg-emoji emoji-id="5800709991627232190">💳</tg-emoji>',
     "💵": '<tg-emoji emoji-id="6206155797722830770">💵</tg-emoji>',
@@ -839,7 +837,7 @@ class KillerGateway:
                 if errors:
                     msg = errors[0]['msg']
                     if "No 'To' Account Specified" in msg:
-                        return "𝗖𝗮𝗿𝗱 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱\n𝗥𝗲𝗮𝘀𝗼𝗻: 𝗡𝗼𝘁 𝗳𝗼𝗻𝗱"
+                        return "𝗖𝗮𝗿𝗱 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱\n𝗥𝗲𝗮𝘀𝗼𝗻: 𝗡𝗼𝘁 𝗳𝗼𝘂𝗻𝗱"
                     return msg
                 return f"{ce('✅')} Approved"
         except Exception as e:
@@ -944,7 +942,7 @@ def format_kill_result(card, mm, yy, cvv, result, bin_info, user_name, elapsed, 
         status_color = "𝗘𝗥𝗥𝗢𝗥"
 
     return (
-        f"{box_title(f'{ce('⚡')} KVN KILLER v{VERSION} {ce('⚡')}')}\n\n"
+        f"{box_title(f'{ce(\"⚡\")} KVN KILLER v{VERSION} {ce(\"⚡\")}')}\n\n"
         f"{ce('💳')} <code>{card}|{mm}|{yy}|{cvv}</code>\n"
         f"{sep_short()}\n"
         f"{ce('🏷')} 𝗕𝗿𝗮𝗻𝗱 ▸ <b>{bin_info.brand.upper()}</b>\n"
@@ -963,7 +961,7 @@ def format_kill_result(card, mm, yy, cvv, result, bin_info, user_name, elapsed, 
 
 def format_channel_hit(user_name, card_masked, result):
     return (
-        f"{box_title(f'{ce('💔')} CARD KILLED {ce('💔')}')}\n\n"
+        f"{box_title(f'{ce(\"💔\")} CARD KILLED {ce(\"💔\")}')}\n\n"
         f"{ce('👽')} 𝗨𝘀𝗲𝗿    ▸ <b>{user_name}</b>\n"
         f"{ce('💔')} 𝗦𝘁𝗮𝘁𝘂𝘀   ▸ <b>KILLED</b>\n"
         f"{ce('💳')} 𝗖𝗮𝗿𝗱    ▸ <code>{card_masked}</code>\n"
@@ -986,7 +984,7 @@ def format_plan(user_id: int) -> str:
             pass
     active = f"{ce('✅')} Active" if days > 0 else f"{ce('❌')} Expired"
     return (
-        f"{box_title(f'{ce('👑')} PLAN INFO {ce('👑')}')}\n\n"
+        f"{box_title(f'{ce(\"👑\")} PLAN INFO {ce(\"👑\")}')}\n\n"
         f"📊 𝗦𝘁𝗮𝘁𝘂𝘀     ▸ <b>{active}</b>\n"
         f"{ce('⏰')} 𝗘𝘅𝗽𝗶𝗿𝗲𝘀   ▸ <code>{expiry[:10] if expiry else 'N/A'}</code>\n"
         f"📅 𝗗𝗮𝘆𝘀 𝗟𝗲𝗳𝘁 ▸ <b>{days}</b>\n"
@@ -1012,7 +1010,7 @@ def format_profile(user_id: int) -> str:
             pass
     active = f"{ce('✅')} Active" if days > 0 else f"{ce('❌')} Expired"
     return (
-        f"{box_title(f'{ce('👤')} PROFILE {ce('👤')}')}\n\n"
+        f"{box_title(f'{ce(\"👤\")} PROFILE {ce(\"👤\")}')}\n\n"
         f"🆔 𝗜𝗗       ▸ <code>{user.user_id}</code>\n"
         f"📛 𝗡𝗮𝗺𝗲     ▸ <b>{user.first_name or 'N/A'}</b>\n"
         f"📞 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲 ▸ @{user.username or 'N/A'}\n"
@@ -1042,7 +1040,7 @@ def format_bin_lookup(bin_info: BINInfo) -> str:
 
 def format_menu(is_owner: bool = False) -> str:
     base = (
-        f"{box_title(f'{ce('⚙️')} KVN KILLER v{VERSION} {ce('⚙️')}')}\n\n"
+        f"{box_title(f'{ce(\"⚙️\")} KVN KILLER v{VERSION} {ce(\"⚙️\")}')}\n\n"
         f"{ce('💔')} <b>KILLER</b>\n"
         f"{ce('⚡')} <code>/kill</code> ▸ CC|MM|YY|CVV — Kill Card\n"
         f"{sep_mid()}\n"
@@ -1112,7 +1110,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_owner = (u.id == OWNER_ID)
     name = u.first_name or "Operator"
     text = (
-        f"{box_title(f'{ce('⚡')} KVN KILLER v{VERSION} {ce('⚡')}')}\n\n"
+        f"{box_title(f'{ce(\"⚡\")} KVN KILLER v{VERSION} {ce(\"⚡\")}')}\n\n"
         f"👋 𝗪𝗲𝗹𝗰𝗼𝗺𝗲, <b>{name}</b>\n"
         f"{ce('💔')} 𝗞𝗶𝗹𝗹𝗲𝗿 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 — Authorize.net + Payrix\n"
         f"{ce('⚡')} 𝗦𝗶𝗻𝗴𝗹𝗲 𝗞𝗶𝗹𝗹\n"
@@ -1133,12 +1131,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "nav_menu":
         await query.edit_message_text(
-            f"{box_title(f'{ce('⚡')} KVN KILLER v{VERSION} {ce('⚡')}')}\n\n{format_menu(is_owner)}",
+            f"{box_title(f'{ce(\"⚡\")} KVN KILLER v{VERSION} {ce(\"⚡\")}')}\n\n{format_menu(is_owner)}",
             parse_mode=ParseMode.HTML, reply_markup=menu_keyboard(is_owner))
 
     elif data == "nav_kill":
         await query.edit_message_text(
-            f"{box_title(f'{ce('⚡')} KILL CARD {ce('⚡')}')}\n\n"
+            f"{box_title(f'{ce(\"⚡\")} KILL CARD {ce(\"⚡\")}')}\n\n"
             f"Usage:\n<code>/kill 4111111111111111|12|25|123</code>\n\n"
             f"Spams 5 donation attempts + Payrix check\n"
             f"{ce('💔')} Requires kill credits",
@@ -1164,7 +1162,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "nav_credits":
         credits = db.get_credits(u.id)
         await query.edit_message_text(
-            f"{box_title(f'{ce('💰')} CREDITS {ce('💰')}')}\n\n"
+            f"{box_title(f'{ce(\"💰\")} CREDITS {ce(\"💰\")}')}\n\n"
             f"{ce('💰')} 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 ▸ <code>{credits}</code>\n"
             f"{sep_mini()}",
             parse_mode=ParseMode.HTML, reply_markup=back_keyboard())
@@ -1286,24 +1284,24 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     loading = await update.message.reply_text(
-        f"{box_title(f'{ce('⚡')} KVN KILLER {ce('⚡')}')}\n\n{loading_bar(10, 'Initializing Sequence...')}",
+        f"{box_title(f'{ce(\"⚡\")} KVN KILLER {ce(\"⚡\")}')}\n\n{loading_bar(10, 'Initializing Sequence...')}",
         parse_mode=ParseMode.HTML)
     start = time.time()
 
     await loading.edit_text(
-        f"{box_title(f'{ce('⚡')} KVN KILLER {ce('⚡')}')}\n\n{loading_bar(30, 'Engaging Target...')}",
+        f"{box_title(f'{ce(\"⚡\")} KVN KILLER {ce(\"⚡\")}')}\n\n{loading_bar(30, 'Engaging Target...')}",
         parse_mode=ParseMode.HTML)
 
     session = await session_mgr.get_session()
     bin_info = await bin_lookup(card, session, None)
 
     await loading.edit_text(
-        f"{box_title(f'{ce('⚡')} KVN KILLER {ce('⚡')}')}\n\n{loading_bar(50, 'Spamming Gateways...')}",
+        f"{box_title(f'{ce(\"⚡\")} KVN KILLER {ce(\"⚡\")}')}\n\n{loading_bar(50, 'Spamming Gateways...')}",
         parse_mode=ParseMode.HTML)
     result = await KillerGateway.kill(card, mm, yy, cvv)
 
     await loading.edit_text(
-        f"{box_title(f'{ce('⚡')} KVN KILLER {ce('⚡')}')}\n\n{loading_bar(80, 'Payrix Check...')}",
+        f"{box_title(f'{ce(\"⚡\")} KVN KILLER {ce(\"⚡\")}')}\n\n{loading_bar(80, 'Payrix Check...')}",
         parse_mode=ParseMode.HTML)
 
     elapsed = round(time.time() - start, 2)
@@ -1447,7 +1445,7 @@ async def credits_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     credits = db.get_credits(user_id)
     await update.message.reply_text(
-        f"{box_title(f'{ce('💰')} CREDITS {ce('💰')}')}\n\n"
+        f"{box_title(f'{ce(\"💰\")} CREDITS {ce(\"💰\")}')}\n\n"
         f"{ce('💰')} 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 ▸ <code>{credits}</code>\n{sep_mini()}",
         parse_mode=ParseMode.HTML)
 
@@ -1550,7 +1548,7 @@ async def redeem(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if days:
         user = db.get_user(update.effective_user.id)
         await update.message.reply_text(
-            f"{box_title(f'{ce('✅')} KEY REDEEMED {ce('✅')}')}\n\n"
+            f"{box_title(f'{ce(\"✅\")} KEY REDEEMED {ce(\"✅\")}')}\n\n"
             f"📅 𝗗𝗮𝘆𝘀    ▸ <b>{days}</b>\n"
             f"{ce('⏰')} 𝗘𝘅𝗽𝗶𝗿𝗲𝘀 ▸ <code>{user.plan_expiry[:10] if user.plan_expiry else 'N/A'}</code>\n"
             f"{sep_mini()}\n"
