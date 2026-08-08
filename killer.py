@@ -1,8 +1,9 @@
 """
-KVN Killer v5.2 — Custom Emoji Edition
-- All UI emojis replaced with custom Telegram premium emojis
-- ce() helper function for clean emoji mapping
-- Applied to all formatters, menus, and responses
+KVN Killer v5.4 — Full Custom Emoji Edition
+- ALL custom Telegram premium emojis integrated
+- Pure Single-Kill Mode (Authorize.net + Payrix)
+- Smart Proxy Pool with Health Scoring
+- Rate Limiting · Session Pooling
 """
 
 import asyncio
@@ -41,7 +42,7 @@ MONGO_URI = os.environ.get("MONGO_URI", "")
 DB_NAME = os.environ.get("DB_NAME", "stresser_db")
 PROXY_COLLECTION = os.environ.get("PROXY_COLLECTION", "proxies")
 
-VERSION = "5.2"
+VERSION = "5.4"
 CODENAME = "Phantom"
 
 SITE_CONFIG = {
@@ -112,31 +113,45 @@ PAYMENT_GATEWAYS = [
 BANNED_BINS = {"535563", "543446", "532610", "485340", "531106", "494116", "516929", "435880", "517608", "416549"}
 
 # ═══════════════════════════════════════
-# CUSTOM EMOJI MAP
+# FULL CUSTOM EMOJI MAP — ALL EMOJIS
 # ═══════════════════════════════════════
 CUSTOM_EMOJIS = {
-    "⚡": '<tg-emoji emoji-id="6026367225466720832">⚡</tg-emoji>',
+    # Batch 2 (primary — newest IDs)
+    "⚡": '<tg-emoji emoji-id="5879783483462655267">⚡</tg-emoji>',
+    "✅": '<tg-emoji emoji-id="5870702999180942496">✅</tg-emoji>',
+    "💳": '<tg-emoji emoji-id="5855210601172705878">💳</tg-emoji>',
+    "🔗": '<tg-emoji emoji-id="4958689671950369798">🔗</tg-emoji>',
+    "💬": '<tg-emoji emoji-id="5855024182412188879">💬</tg-emoji>',
+    "🏷": '<tg-emoji emoji-id="5854776663446920778">🏷</tg-emoji>',
+    "🏦": '<tg-emoji emoji-id="5854957696318447867">🏦</tg-emoji>',
+    "🌍": '<tg-emoji emoji-id="5852982548233199026">🌍</tg-emoji>',
+    "👽": '<tg-emoji emoji-id="5343993902493895946">👽</tg-emoji>',
+    "👑": '<tg-emoji emoji-id="5854931759010946555">👑</tg-emoji>',
+    "🌚": '<tg-emoji emoji-id="6298678524379137990">🌚</tg-emoji>',
+    "🟢": '<tg-emoji emoji-id="5854964615510762741">🟢</tg-emoji>',
+    # Batch 1 (additional emojis)
+    "💳1": '<tg-emoji emoji-id="6206233180148603109">💳</tg-emoji>',
+    "💳2": '<tg-emoji emoji-id="5800709991627232190">💳</tg-emoji>',
+    "💵": '<tg-emoji emoji-id="6206155797722830770">💵</tg-emoji>',
+    "🚀": '<tg-emoji emoji-id="6147654280112248427">🚀</tg-emoji>',
+    "⭐️": '<tg-emoji emoji-id="6206404510689007446">⭐️</tg-emoji>',
+    "💔": '<tg-emoji emoji-id="5971992406923416087">💔</tg-emoji>',
+    "⚡1": '<tg-emoji emoji-id="6026367225466720832">⚡</tg-emoji>',
     "⚡2": '<tg-emoji emoji-id="5229064374403998351">⚡</tg-emoji>',
-    "💳": '<tg-emoji emoji-id="5800709991627232190">💳</tg-emoji>',
-    "💳2": '<tg-emoji emoji-id="6206233180148603109">💳</tg-emoji>',
-    "💰": '<tg-emoji emoji-id="6190336264940559752">💰</tg-emoji>',
-    "⏱": '<tg-emoji emoji-id="5382194935057372936">⏱</tg-emoji>',
-    "👤": '<tg-emoji emoji-id="5895652322469482989">👤</tg-emoji>',
-    "👑": '<tg-emoji emoji-id="5893473283696759404">👑</tg-emoji>',
-    "⚙️": '<tg-emoji emoji-id="5282843764451195532">⚙️</tg-emoji>',
-    "✅": '<tg-emoji emoji-id="6298612102709909362">✅</tg-emoji>',
+    "💠": '<tg-emoji emoji-id="5971837723676249096">💠</tg-emoji>',
+    "✅1": '<tg-emoji emoji-id="6298612102709909362">✅</tg-emoji>',
+    "🔥": '<tg-emoji emoji-id="5267500801240092311">🔥</tg-emoji>',
     "❌": '<tg-emoji emoji-id="5440681540541502133">❌</tg-emoji>',
     "⚠️": '<tg-emoji emoji-id="5420323339723881652">⚠️</tg-emoji>',
-    "🔥": '<tg-emoji emoji-id="5267500801240092311">🔥</tg-emoji>',
-    "💠": '<tg-emoji emoji-id="5971837723676249096">💠</tg-emoji>',
+    "💰": '<tg-emoji emoji-id="6190336264940559752">💰</tg-emoji>',
+    "⏱": '<tg-emoji emoji-id="5382194935057372936">⏱</tg-emoji>',
+    "🛍️": '<tg-emoji emoji-id="5456140674028019486">🛍️</tg-emoji>',
+    "👑1": '<tg-emoji emoji-id="5893473283696759404">👑</tg-emoji>',
+    "👤": '<tg-emoji emoji-id="5895652322469482989">👤</tg-emoji>',
+    "⚙️": '<tg-emoji emoji-id="5282843764451195532">⚙️</tg-emoji>',
     "⏰": '<tg-emoji emoji-id="5895713431264170680">⏰</tg-emoji>',
     "💻": '<tg-emoji emoji-id="5222079954421818267">💻</tg-emoji>',
     "⭐": '<tg-emoji emoji-id="5042334757040423886">⭐</tg-emoji>',
-    "🚀": '<tg-emoji emoji-id="6147654280112248427">🚀</tg-emoji>',
-    "💔": '<tg-emoji emoji-id="5971992406923416087">💔</tg-emoji>',
-    "💵": '<tg-emoji emoji-id="6206155797722830770">💵</tg-emoji>',
-    "🛍️": '<tg-emoji emoji-id="5456140674028019486">🛍️</tg-emoji>',
-    "⭐️": '<tg-emoji emoji-id="6206404510689007446">⭐️</tg-emoji>',
     "⭐2": '<tg-emoji emoji-id="5039727497143387500">⭐</tg-emoji>',
     "⭐3": '<tg-emoji emoji-id="5042176294222037888">⭐</tg-emoji>',
     "⭐4": '<tg-emoji emoji-id="5042290883949495533">⭐</tg-emoji>',
@@ -153,7 +168,6 @@ CUSTOM_EMOJIS = {
 }
 
 def ce(emoji: str) -> str:
-    """Convert standard emoji to custom Telegram emoji tag"""
     return CUSTOM_EMOJIS.get(emoji, emoji)
 
 # ═══════════════════════════════════════
@@ -405,7 +419,7 @@ class ProxyPool:
 
     def _init_mongo(self):
         if not MONGO_URI:
-            logger.warning("⚠️ No MONGO_URI — proxy pool running in fallback mode")
+            logger.warning(f"{ce('⚠️')} No MONGO_URI — proxy pool running in fallback mode")
             return
         try:
             import pymongo
@@ -413,7 +427,7 @@ class ProxyPool:
             self._coll = client[DB_NAME][PROXY_COLLECTION]
             self._coll.create_index("proxy_string", unique=True)
             self._mongo_active = True
-            logger.info("✅ MongoDB connected — smart proxy pool active")
+            logger.info(f"{ce('✅')} MongoDB connected — smart proxy pool active")
         except Exception as e:
             logger.error(f"MongoDB connection failed: {e}")
             self._mongo_active = False
@@ -826,7 +840,7 @@ class KillerGateway:
                     if "No 'To' Account Specified" in msg:
                         return "𝗖𝗮𝗿𝗱 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱\n𝗥𝗲𝗮𝘀𝗼𝗻: 𝗡𝗼𝘁 𝗳𝗼𝘂𝗻𝗱"
                     return msg
-                return "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
+                return f"{ce('✅')} Approved"
         except Exception as e:
             logger.error(f"Payrix error: {e}")
             return "𝗔𝗻 𝗲𝗿𝗿𝗼𝗿 𝗼𝗰𝗰𝘂𝗿𝗿𝗲𝗱"
@@ -853,7 +867,7 @@ class KillerGateway:
                     "status": "ERROR",
                     "response": "Form signature missing",
                     "gateway": "Killer",
-                    "killer_status": "Error ❌"
+                    "killer_status": f"Error {ce('❌')}"
                 }
 
             donation_params = {
@@ -871,7 +885,7 @@ class KillerGateway:
             results = [r if isinstance(r, bool) else True for r in results]
             declined = sum(1 for r in results if r is True)
             is_killed = (declined == 5)
-            killer_status = "KILLED ✅" if is_killed else "Maybe Live? 🤔"
+            killer_status = f"KILLED {ce('✅')}" if is_killed else "Maybe Live?"
 
             payrix_result = await KillerGateway.payrix_check(card, mm, yy, cvv)
             return {
@@ -885,20 +899,20 @@ class KillerGateway:
                 "status": "ERROR",
                 "response": str(e),
                 "gateway": "Killer",
-                "killer_status": "Error ❌"
+                "killer_status": f"Error {ce('❌')}"
             }
 
 # ═══════════════════════════════════════
-# UI FORMATTERS — CUSTOM EMOJI EDITION
+# UI FORMATTERS — FULL CUSTOM EMOJI
 # ═══════════════════════════════════════
 def sep_mid() -> str:
-    return "「 ✦ 」「 ✦ 」「 ✦ 」"
+    return f"「 {ce('⭐')} 」「 {ce('⭐')} 」「 {ce('⭐')} 」"
 
 def sep_short() -> str:
-    return "「 ✦ 」「 ✦ 」"
+    return f"「 {ce('⭐')} 」「 {ce('⭐')} 」"
 
 def sep_mini() -> str:
-    return "「 ✦ 」"
+    return f"「 {ce('⭐')} 」"
 
 def loading_bar(percent: int, label: str) -> str:
     filled = percent // 10
@@ -912,7 +926,7 @@ def box_title(text: str, width: int = 38) -> str:
 def format_kill_result(card, mm, yy, cvv, result, bin_info, user_name, elapsed, credits_left):
     ks = result.get('killer_status', 'Unknown')
     if "KILLED" in ks:
-        status_emoji = "💀"
+        status_emoji = ce("💔")
         status_color = "𝗞𝗜𝗟𝗟𝗘𝗗"
     elif "Live" in ks:
         status_emoji = ce("⚡")
@@ -923,37 +937,37 @@ def format_kill_result(card, mm, yy, cvv, result, bin_info, user_name, elapsed, 
 
     return (
         f"{box_title(f'{ce(\"⚡\")} KVN KILLER v{VERSION} {ce(\"⚡\")}')}\n\n"
-        f"{ce(\"💳\")} <code>{card}|{mm}|{yy}|{cvv}</code>\n"
+        f"{ce('💳')} <code>{card}|{mm}|{yy}|{cvv}</code>\n"
         f"{sep_short()}\n"
-        f"🏷 𝗕𝗿𝗮𝗻𝗱 ▸ <b>{bin_info.brand.upper()}</b>\n"
-        f"🏦 𝗕𝗮𝗻𝗸  ▸ <b>{bin_info.bank}</b>\n"
-        f"🌍 𝗥𝗲𝗴𝗶𝗼𝗻 ▸ {bin_info.country_code} <b>{bin_info.country}</b>\n"
-        f"{ce(\"💳\")} 𝗧𝘆𝗽𝗲  ▸ <b>{bin_info.type}</b> / <b>{bin_info.sub_type}</b>\n"
+        f"{ce('🏷')} 𝗕𝗿𝗮𝗻𝗱 ▸ <b>{bin_info.brand.upper()}</b>\n"
+        f"{ce('🏦')} 𝗕𝗮𝗻𝗸  ▸ <b>{bin_info.bank}</b>\n"
+        f"{ce('🌍')} 𝗥𝗲𝗴𝗶𝗼𝗻 ▸ <b>{bin_info.country}</b>\n"
+        f"{ce('💳1')} 𝗧𝘆𝗽𝗲  ▸ <b>{bin_info.type}</b> / <b>{bin_info.sub_type}</b>\n"
         f"{sep_mid()}\n"
         f"{status_emoji} <b>{status_color}</b>\n"
-        f"🔗 𝗔𝘂𝘁𝗵 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ▸ <b>{result['response']}</b>\n"
+        f"{ce('🔗')} 𝗔𝘂𝘁𝗵 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ▸ <b>{result['response']}</b>\n"
         f"{sep_mid()}\n"
-        f"{ce(\"⏱\")} 𝗘𝗹𝗮𝗽𝘀𝗲𝗱 ▸ <code>{elapsed}s</code>\n"
-        f"{ce(\"💰\")} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀   ▸ <code>{credits_left}</code>\n"
-        f"{ce(\"👤\")} 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿 ▸ <b>{user_name}</b>\n"
+        f"{ce('⏱')} 𝗘𝗹𝗮𝗽𝘀𝗲𝗱 ▸ <code>{elapsed}s</code>\n"
+        f"{ce('💰')} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀   ▸ <code>{credits_left}</code>\n"
+        f"{ce('👽')} 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿 ▸ <b>{user_name}</b>\n"
         f"{sep_mini()}"
     )
 
 def format_channel_hit(user_name, card_masked, result):
     return (
-        f"{box_title(f'💀 CARD KILLED 💀')}\n\n"
-        f"{ce(\"👤\")} 𝗨𝘀𝗲𝗿    ▸ <b>{user_name}</b>\n"
-        f"💀 𝗦𝘁𝗮𝘁𝘂𝘀   ▸ <b>KILLED</b>\n"
-        f"{ce(\"💳\")} 𝗖𝗮𝗿𝗱    ▸ <code>{card_masked}</code>\n"
-        f"💬 𝗥𝗲𝘀𝗽    ▸ <b>{result['response']}</b>\n"
+        f"{box_title(f'{ce(\"💔\")} CARD KILLED {ce(\"💔\")}')}\n\n"
+        f"{ce('👽')} 𝗨𝘀𝗲𝗿    ▸ <b>{user_name}</b>\n"
+        f"{ce('💔')} 𝗦𝘁𝗮𝘁𝘂𝘀   ▸ <b>KILLED</b>\n"
+        f"{ce('💳')} 𝗖𝗮𝗿𝗱    ▸ <code>{card_masked}</code>\n"
+        f"{ce('💬')} 𝗥𝗲𝘀𝗽    ▸ <b>{result['response']}</b>\n"
         f"{sep_mini()}\n"
-        f"{ce(\"👤\")} @{user_name}"
+        f"{ce('👽')} @{user_name}"
     )
 
 def format_plan(user_id: int) -> str:
     user = db.get_user(user_id)
     if not user:
-        return f"{ce(\"❌\")} User not found."
+        return f"{ce('❌')} User not found."
     expiry = user.plan_expiry
     days = 0
     if expiry:
@@ -962,24 +976,24 @@ def format_plan(user_id: int) -> str:
             days = max(0, (dt - datetime.now()).days)
         except:
             pass
-    active = f"{ce(\"✅\")} Active" if days > 0 else f"{ce(\"❌\")} Expired"
+    active = f"{ce('✅')} Active" if days > 0 else f"{ce('❌')} Expired"
     return (
         f"{box_title(f'{ce(\"👑\")} PLAN INFO {ce(\"👑\")}')}\n\n"
         f"📊 𝗦𝘁𝗮𝘁𝘂𝘀     ▸ <b>{active}</b>\n"
-        f"{ce(\"⏰\")} 𝗘𝘅𝗽𝗶𝗿𝗲𝘀   ▸ <code>{expiry[:10] if expiry else 'N/A'}</code>\n"
+        f"{ce('⏰')} 𝗘𝘅𝗽𝗶𝗿𝗲𝘀   ▸ <code>{expiry[:10] if expiry else 'N/A'}</code>\n"
         f"📅 𝗗𝗮𝘆𝘀 𝗟𝗲𝗳𝘁 ▸ <b>{days}</b>\n"
         f"{sep_mid()}\n"
-        f"{ce(\"⚡\")} <code>/kill</code> ▸ CC|MM|YY|CVV — Kill Card\n"
+        f"{ce('⚡')} <code>/kill</code> ▸ CC|MM|YY|CVV — Kill Card\n"
         f"{sep_mid()}\n"
-        f"{ce(\"💰\")} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀  ▸ <code>{user.kill_credits}</code>\n"
-        f"💀 𝗞𝗶𝗹𝗹𝘀    ▸ <code>{user.kill_count}</code>\n"
+        f"{ce('💰')} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀  ▸ <code>{user.kill_credits}</code>\n"
+        f"{ce('💔')} 𝗞𝗶𝗹𝗹𝘀    ▸ <code>{user.kill_count}</code>\n"
         f"{sep_mini()}"
     )
 
 def format_profile(user_id: int) -> str:
     user = db.get_user(user_id)
     if not user:
-        return f"{ce(\"❌\")} User not found."
+        return f"{ce('❌')} User not found."
     expiry = user.plan_expiry
     days = 0
     if expiry:
@@ -988,18 +1002,18 @@ def format_profile(user_id: int) -> str:
             days = max(0, (dt - datetime.now()).days)
         except:
             pass
-    active = f"{ce(\"✅\")} Active" if days > 0 else f"{ce(\"❌\")} Expired"
+    active = f"{ce('✅')} Active" if days > 0 else f"{ce('❌')} Expired"
     return (
         f"{box_title(f'{ce(\"👤\")} PROFILE {ce(\"👤\")}')}\n\n"
         f"🆔 𝗜𝗗       ▸ <code>{user.user_id}</code>\n"
         f"📛 𝗡𝗮𝗺𝗲     ▸ <b>{user.first_name or 'N/A'}</b>\n"
         f"📞 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲 ▸ @{user.username or 'N/A'}\n"
         f"{sep_mid()}\n"
-        f"{ce(\"👑\")} 𝗣𝗹𝗮𝗻     ▸ <b>{active}</b>\n"
+        f"{ce('👑')} 𝗣𝗹𝗮𝗻     ▸ <b>{active}</b>\n"
         f"📅 𝗗𝗮𝘆𝘀     ▸ <b>{days}</b>\n"
-        f"{ce(\"💰\")} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀  ▸ <code>{user.kill_credits}</code>\n"
+        f"{ce('💰')} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀  ▸ <code>{user.kill_credits}</code>\n"
         f"{sep_mid()}\n"
-        f"💀 𝗞𝗶𝗹𝗹𝘀    ▸ <code>{user.kill_count}</code>\n"
+        f"{ce('💔')} 𝗞𝗶𝗹𝗹𝘀    ▸ <code>{user.kill_count}</code>\n"
         f"{sep_mid()}\n"
         f"📅 𝗝𝗼𝗶𝗻𝗲𝗱   ▸ <code>{user.joined_at[:10] if user.joined_at else 'N/A'}</code>\n"
         f"{sep_mini()}"
@@ -1008,42 +1022,42 @@ def format_profile(user_id: int) -> str:
 def format_bin_lookup(bin_info: BINInfo) -> str:
     return (
         f"{box_title(f'🔍 BIN LOOKUP 🔍')}\n\n"
-        f"{ce(\"💳\")} 𝗕𝗜𝗡     ▸ <code>{bin_info.bin}</code>\n"
+        f"{ce('💳')} 𝗕𝗜𝗡     ▸ <code>{bin_info.bin}</code>\n"
         f"{sep_mid()}\n"
-        f"🏷 𝗕𝗿𝗮𝗻𝗱   ▸ <b>{bin_info.brand.upper()}</b>\n"
-        f"{ce(\"💳\")} 𝗧𝘆𝗽𝗲   ▸ <b>{bin_info.type}</b>\n"
+        f"{ce('🏷')} 𝗕𝗿𝗮𝗻𝗱   ▸ <b>{bin_info.brand.upper()}</b>\n"
+        f"{ce('💳2')} 𝗧𝘆𝗽𝗲   ▸ <b>{bin_info.type}</b>\n"
         f"📋 𝗦𝘂𝗯    ▸ <b>{bin_info.sub_type}</b>\n"
-        f"🏦 𝗕𝗮𝗻𝗸   ▸ <b>{bin_info.bank}</b>\n"
-        f"🌍 𝗖𝗼𝘂𝗻𝘁𝗿𝘆 ▸ {bin_info.country_code} <b>{bin_info.country}</b>\n"
+        f"{ce('🏦')} 𝗕𝗮𝗻𝗸   ▸ <b>{bin_info.bank}</b>\n"
+        f"{ce('🌍')} 𝗖𝗼𝘂𝗻𝘁𝗿𝘆 ▸ <b>{bin_info.country}</b>\n"
         f"{sep_mini()}"
     )
 
 def format_menu(is_owner: bool = False) -> str:
     base = (
         f"{box_title(f'{ce(\"⚙️\")} KVN KILLER v{VERSION} {ce(\"⚙️\")}')}\n\n"
-        f"💀 <b>KILLER</b>\n"
-        f"{ce(\"⚡\")} <code>/kill</code> ▸ CC|MM|YY|CVV — Kill Card\n"
+        f"{ce('💔')} <b>KILLER</b>\n"
+        f"{ce('⚡')} <code>/kill</code> ▸ CC|MM|YY|CVV — Kill Card\n"
         f"{sep_mid()}\n"
-        f"🔧 <b>TOOLS</b>\n"
+        f"{ce('💻')} <b>TOOLS</b>\n"
         f"🔍 <code>/bin</code>  ▸ BIN Lookup\n"
-        f"{ce(\"👤\")} <code>/me</code>   ▸ Your Profile\n"
+        f"{ce('👤')} <code>/me</code>   ▸ Your Profile\n"
         f"🆔 <code>/id</code>   ▸ Get User ID\n"
         f"{sep_mid()}\n"
-        f"{ce(\"👑\")} <code>/plan</code>    ▸ Plan Info\n"
-        f"{ce(\"💰\")} <code>/credits</code> ▸ Credits Balance\n"
+        f"{ce('👑')} <code>/plan</code>    ▸ Plan Info\n"
+        f"{ce('💰')} <code>/credits</code> ▸ Credits Balance\n"
         f"🔑 <code>/redeem</code>  ▸ Redeem Key\n"
     )
     if is_owner:
         base += (
             f"{sep_mid()}\n"
             f"🛡️ <b>ADMIN</b>\n"
-            f"{ce(\"👤\")} <code>/grant ID DAYS</code> ▸ Grant Plan\n"
-            f"{ce(\"⚡\")} <code>/grantkiller ID CREDITS</code>\n"
+            f"{ce('👤')} <code>/grant ID DAYS</code> ▸ Grant Plan\n"
+            f"{ce('⚡1')} <code>/grantkiller ID CREDITS</code>\n"
             f"🔑 <code>/keygen DAYS [count]</code>\n"
             f"🚫 <code>/ban</code> / <code>/unban</code> / <code>/banlist</code>\n"
             f"📢 <code>/broadcast</code> ▸ Mass Message\n"
             f"📊 <code>/stats</code> ▸ Bot Stats\n"
-            f"🔗 <code>/proxy</code> ▸ Add Proxy\n"
+            f"{ce('🔗')} <code>/proxy</code> ▸ Add Proxy\n"
             f"🌐 <code>/proxies</code> ▸ View Proxies\n"
             f"🔄 <code>/reload</code> ▸ Reload Proxies\n"
         )
@@ -1051,7 +1065,7 @@ def format_menu(is_owner: bool = False) -> str:
     return base
 
 # ═══════════════════════════════════════
-# INLINE KEYBOARDS (standard emojis for buttons)
+# INLINE KEYBOARDS
 # ═══════════════════════════════════════
 def menu_keyboard(is_owner: bool = False) -> InlineKeyboardMarkup:
     buttons = [
@@ -1092,11 +1106,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"{box_title(f'{ce(\"⚡\")} KVN KILLER v{VERSION} {ce(\"⚡\")}')}\n\n"
         f"👋 𝗪𝗲𝗹𝗰𝗼𝗺𝗲, <b>{name}</b>\n"
-        f"💀 𝗞𝗶𝗹𝗹𝗲𝗿 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 — Authorize.net + Payrix\n"
-        f"{ce(\"⚡\")} 𝗦𝗶𝗻𝗴𝗹𝗲 𝗞𝗶𝗹𝗹\n"
-        f"🔍 𝗕𝗜𝗡 𝗟𝗼𝗼𝗸𝘂𝗽 · {ce(\"👤\")} 𝗣𝗿𝗼𝗳𝗶𝗹𝗲\n\n"
+        f"{ce('💔')} 𝗞𝗶𝗹𝗹𝗲𝗿 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 — Authorize.net + Payrix\n"
+        f"{ce('⚡')} 𝗦𝗶𝗻𝗴𝗹𝗲 𝗞𝗶𝗹𝗹\n"
+        f"🔍 𝗕𝗜𝗡 𝗟𝗼𝗼𝗸𝘂𝗽 · {ce('👤')} 𝗣𝗿𝗼𝗳𝗶𝗹𝗲\n\n"
         f"{format_menu(is_owner)}\n\n"
-        f"{ce(\"⚠️\")} Use responsibly."
+        f"{ce('⚠️')} Use responsibly."
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML,
                                    reply_markup=menu_keyboard(is_owner))
@@ -1119,7 +1133,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{box_title(f'{ce(\"⚡\")} KILL CARD {ce(\"⚡\")}')}\n\n"
             f"Usage:\n<code>/kill 4111111111111111|12|25|123</code>\n\n"
             f"Spams 5 donation attempts + Payrix check\n"
-            f"💀 Requires kill credits",
+            f"{ce('💔')} Requires kill credits",
             parse_mode=ParseMode.HTML, reply_markup=back_keyboard())
 
     elif data == "nav_bin":
@@ -1143,7 +1157,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         credits = db.get_credits(u.id)
         await query.edit_message_text(
             f"{box_title(f'{ce(\"💰\")} CREDITS {ce(\"💰\")}')}\n\n"
-            f"{ce(\"💰\")} 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 ▸ <code>{credits}</code>\n"
+            f"{ce('💰')} 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 ▸ <code>{credits}</code>\n"
             f"{sep_mini()}",
             parse_mode=ParseMode.HTML, reply_markup=back_keyboard())
 
@@ -1170,12 +1184,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             f"{box_title(f'📊 BOT STATS 📊')}\n\n"
             f"👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀   ▸ <code>{s['users']}</code>\n"
-            f"{ce(\"✅\")} 𝗔𝗰𝘁𝗶𝘃𝗲         ▸ <code>{active_u}</code>\n"
+            f"{ce('✅')} 𝗔𝗰𝘁𝗶𝘃𝗲         ▸ <code>{active_u}</code>\n"
             f"🚫 𝗕𝗮𝗻𝗻𝗲𝗱       ▸ <code>{banned_u}</code>\n"
-            f"{ce(\"👑\")} 𝗪𝗶𝘁𝗵 𝗣𝗹𝗮𝗻     ▸ <code>{with_plan}</code>\n"
+            f"{ce('👑')} 𝗪𝗶𝘁𝗵 𝗣𝗹𝗮𝗻     ▸ <code>{with_plan}</code>\n"
             f"{sep_mid()}\n"
-            f"💀 𝗧𝗼𝘁𝗮𝗹 𝗞𝗶𝗹𝗹𝘀   ▸ <code>{total_kills}</code>\n"
-            f"{ce(\"💰\")} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀       ▸ <code>{total_credits}</code>\n"
+            f"{ce('💔')} 𝗧𝗼𝘁𝗮𝗹 𝗞𝗶𝗹𝗹𝘀   ▸ <code>{total_kills}</code>\n"
+            f"{ce('💰')} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀       ▸ <code>{total_credits}</code>\n"
             f"{sep_mid()}\n"
             f"🌐 𝗣𝗿𝗼𝘅𝗶𝗲𝘀       ▸ <code>{pa}/{pt}</code> active\n"
             f"{sep_mini()}",
@@ -1209,7 +1223,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             msg = f"{box_title(f'🌐 PROXY LIST 🌐')}\n\n"
             for idx, p in enumerate(proxies[:20]):
-                status = "🟢" if p.get("is_active") else "🔴"
+                status = ce("🟢") if p.get("is_active") else "🔴"
                 fc = p.get("fail_count", 0)
                 sc = p.get("success_count", 0)
                 msg += f"{idx}. <code>{p['proxy_string']}</code> {status} (F:{fc} S:{sc})\n"
@@ -1240,7 +1254,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ You are banned.")
         return
     if u.id != OWNER_ID and not db.deduct_kill_credit(u.id):
-        await update.message.reply_text(f"{ce(\"⚠️\")} No kill credits left. Contact admin.")
+        await update.message.reply_text(f"{ce('⚠️')} No kill credits left. Contact admin.")
         return
 
     allowed, wait = await rate_limiter.check(u.id, cooldown=5.0)
@@ -1254,7 +1268,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parsed = parse_cc(text)
     if not parsed:
         await update.message.reply_text(
-            f"{ce(\"❌\")} Invalid format.\n\nUsage: <code>/kill 4111111111111111|12|25|123</code>",
+            f"{ce('❌')} Invalid format.\n\nUsage: <code>/kill 4111111111111111|12|25|123</code>",
             parse_mode=ParseMode.HTML)
         return
     card, mm, yy, cvv = parsed
@@ -1314,7 +1328,7 @@ async def id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     u = update.effective_user
     await update.message.reply_text(
         f"{box_title(f'🆔 USER ID 🆔')}\n\n"
-        f"{ce(\"👤\")} 𝗬𝗼𝘂𝗿 𝗜𝗗 ▸ <code>{u.id}</code>\n"
+        f"{ce('👤')} 𝗬𝗼𝘂𝗿 𝗜𝗗 ▸ <code>{u.id}</code>\n"
         f"📛 𝗡𝗮𝗺𝗲   ▸ <b>{u.first_name or 'N/A'}</b>\n"
         f"📞 𝗨𝘀𝗲𝗿   ▸ @{u.username or 'N/A'}\n"
         f"{sep_mini()}",
@@ -1327,7 +1341,7 @@ async def bin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     bin_input = context.args[0].strip()
     if not bin_input.isdigit() or len(bin_input) < 6:
-        await update.message.reply_text(f"{ce(\"❌\")} BIN must be 6+ digits.")
+        await update.message.reply_text(f"{ce('❌')} BIN must be 6+ digits.")
         return
     bin_str = bin_input[:6]
     msg = await update.message.reply_text(
@@ -1355,7 +1369,7 @@ async def add_proxy(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if line and await proxy_pool.add(line):
             added += 1
     await update.message.reply_text(
-        f"{ce(\"✅\")} Added <b>{added}</b> proxies.", parse_mode=ParseMode.HTML)
+        f"{ce('✅')} Added <b>{added}</b> proxies.", parse_mode=ParseMode.HTML)
 
 async def list_proxies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -1367,7 +1381,7 @@ async def list_proxies(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     msg = f"{box_title(f'🌐 PROXIES 🌐')}\n\n"
     for idx, p in enumerate(proxies[:20]):
-        status = "🟢" if p.get("is_active") else "🔴"
+        status = ce("🟢") if p.get("is_active") else "🔴"
         fc = p.get("fail_count", 0)
         sc = p.get("success_count", 0)
         msg += f"{idx}. <code>{p['proxy_string']}</code> {status} (F:{fc} S:{sc})\n"
@@ -1387,9 +1401,9 @@ async def del_proxy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         idx = int(context.args[0])
         if await proxy_pool.delete_by_index(idx):
-            await update.message.reply_text(f"{ce(\"✅\")} Proxy at index {idx} deleted.")
+            await update.message.reply_text(f"{ce('✅')} Proxy at index {idx} deleted.")
         else:
-            await update.message.reply_text(f"{ce(\"❌\")} Invalid index.")
+            await update.message.reply_text(f"{ce('❌')} Invalid index.")
     except ValueError:
         await update.message.reply_text("Index must be a number.")
 
@@ -1410,11 +1424,11 @@ async def addcredits(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db.ensure_user(target_id)
         db.add_kill_credits(target_id, amount)
         await update.message.reply_text(
-            f"{ce(\"✅\")} Added <b>{amount}</b> credits to <code>{target_id}</code>",
+            f"{ce('✅')} Added <b>{amount}</b> credits to <code>{target_id}</code>",
             parse_mode=ParseMode.HTML)
         try:
             await context.bot.send_message(target_id,
-                f"{ce(\"💰\")} <b>{amount}</b> kill credits added to your account!",
+                f"{ce('💰')} <b>{amount}</b> kill credits added to your account!",
                 parse_mode=ParseMode.HTML)
         except:
             pass
@@ -1426,7 +1440,7 @@ async def credits_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits = db.get_credits(user_id)
     await update.message.reply_text(
         f"{box_title(f'{ce(\"💰\")} CREDITS {ce(\"💰\")}')}\n\n"
-        f"{ce(\"💰\")} 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 ▸ <code>{credits}</code>\n{sep_mini()}",
+        f"{ce('💰')} 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 ▸ <code>{credits}</code>\n{sep_mini()}",
         parse_mode=ParseMode.HTML)
 
 async def ban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1454,7 +1468,7 @@ async def unban_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         target = int(context.args[0])
         db.unban(target)
-        await update.message.reply_text(f"{ce(\"✅\")} Unbanned <code>{target}</code>", parse_mode=ParseMode.HTML)
+        await update.message.reply_text(f"{ce('✅')} Unbanned <code>{target}</code>", parse_mode=ParseMode.HTML)
     except ValueError:
         await update.message.reply_text("Invalid user_id.")
 
@@ -1470,11 +1484,11 @@ async def grant(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db.ensure_user(target)
         db.add_plan_days(target, days)
         await update.message.reply_text(
-            f"{ce(\"✅\")} Granted <b>{days}</b> days to <code>{target}</code>",
+            f"{ce('✅')} Granted <b>{days}</b> days to <code>{target}</code>",
             parse_mode=ParseMode.HTML)
         try:
             await context.bot.send_message(target,
-                f"{ce(\"👑\")} <b>{days}</b> days added to your plan!",
+                f"{ce('👑')} <b>{days}</b> days added to your plan!",
                 parse_mode=ParseMode.HTML)
         except:
             pass
@@ -1494,7 +1508,7 @@ async def grantkiller(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db.ensure_user(target)
         db.add_kill_credits(target, creds)
         await update.message.reply_text(
-            f"{ce(\"✅\")} Granted <b>{creds}</b> kill credits to <code>{target}</code>",
+            f"{ce('✅')} Granted <b>{creds}</b> kill credits to <code>{target}</code>",
             parse_mode=ParseMode.HTML)
     except ValueError:
         await update.message.reply_text("Invalid args.")
@@ -1530,12 +1544,12 @@ async def redeem(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"{box_title(f'{ce(\"✅\")} KEY REDEEMED {ce(\"✅\")}')}\n\n"
             f"📅 𝗗𝗮𝘆𝘀    ▸ <b>{days}</b>\n"
-            f"{ce(\"⏰\")} 𝗘𝘅𝗽𝗶𝗿𝗲𝘀 ▸ <code>{user.plan_expiry[:10] if user.plan_expiry else 'N/A'}</code>\n"
+            f"{ce('⏰')} 𝗘𝘅𝗽𝗶𝗿𝗲𝘀 ▸ <code>{user.plan_expiry[:10] if user.plan_expiry else 'N/A'}</code>\n"
             f"{sep_mini()}\n"
-            f"{ce(\"🔥\")} Unlimited access while active!",
+            f"{ce('🔥')} Unlimited access while active!",
             parse_mode=ParseMode.HTML)
     else:
-        await update.message.reply_text(f"{ce(\"❌\")} Invalid or already redeemed key.")
+        await update.message.reply_text(f"{ce('❌')} Invalid or already redeemed key.")
 
 async def banlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -1562,7 +1576,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rows = db._exec("SELECT user_id FROM users WHERE is_banned = 0")
     sent, failed = 0, 0
     progress = await update.message.reply_text(
-        f"📢 Broadcasting to {len(rows)} users...\n{ce(\"✅\")} {sent} | {ce(\"❌\")} {failed}",
+        f"📢 Broadcasting to {len(rows)} users...\n{ce('✅')} {sent} | {ce('❌')} {failed}",
         parse_mode=ParseMode.HTML)
     for row in rows:
         try:
@@ -1582,15 +1596,15 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if (sent + failed) % 10 == 0:
             try:
                 await progress.edit_text(
-                    f"📢 Broadcasting to {len(rows)} users...\n{ce(\"✅\")} {sent} | {ce(\"❌\")} {failed}",
+                    f"📢 Broadcasting to {len(rows)} users...\n{ce('✅')} {sent} | {ce('❌')} {failed}",
                     parse_mode=ParseMode.HTML)
             except:
                 pass
         await asyncio.sleep(0.05)
     await progress.edit_text(
         f"{box_title(f'📢 BROADCAST DONE 📢')}\n\n"
-        f"{ce(\"✅\")} 𝗦𝗲𝗻𝘁   ▸ <code>{sent}</code>\n"
-        f"{ce(\"❌\")} 𝗙𝗮𝗶𝗹𝗲𝗱 ▸ <code>{failed}</code>\n"
+        f"{ce('✅')} 𝗦𝗲𝗻𝘁   ▸ <code>{sent}</code>\n"
+        f"{ce('❌')} 𝗙𝗮𝗶𝗹𝗲𝗱 ▸ <code>{failed}</code>\n"
         f"👥 𝗧𝗼𝘁𝗮𝗹 ▸ <code>{len(rows)}</code>\n{sep_mini()}",
         parse_mode=ParseMode.HTML)
 
@@ -1610,12 +1624,12 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"{box_title(f'📊 BOT STATS 📊')}\n\n"
         f"👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀  ▸ <code>{s['users']}</code>\n"
-        f"{ce(\"✅\")} 𝗔𝗰𝘁𝗶𝘃𝗲      ▸ <code>{active_u}</code>\n"
+        f"{ce('✅')} 𝗔𝗰𝘁𝗶𝘃𝗲      ▸ <code>{active_u}</code>\n"
         f"🚫 𝗕𝗮𝗻𝗻𝗲𝗱    ▸ <code>{banned_u}</code>\n"
-        f"{ce(\"👑\")} 𝗪𝗶𝘁𝗵 𝗣𝗹𝗮𝗻   ▸ <code>{with_plan}</code>\n"
+        f"{ce('👑')} 𝗪𝗶𝘁𝗵 𝗣𝗹𝗮𝗻   ▸ <code>{with_plan}</code>\n"
         f"{sep_mid()}\n"
-        f"💀 𝗧𝗼𝘁𝗮𝗹 𝗞𝗶𝗹𝗹𝘀 ▸ <code>{total_kills}</code>\n"
-        f"{ce(\"💰\")} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀    ▸ <code>{total_credits}</code>\n"
+        f"{ce('💔')} 𝗧𝗼𝘁𝗮𝗹 𝗞𝗶𝗹𝗹𝘀 ▸ <code>{total_kills}</code>\n"
+        f"{ce('💰')} 𝗖𝗿𝗲𝗱𝗶𝘁𝘀    ▸ <code>{total_credits}</code>\n"
         f"{sep_mid()}\n"
         f"🌐 𝗣𝗿𝗼𝘅𝗶𝗲𝘀    ▸ <code>{pa}/{pt}</code> active\n"
         f"{sep_mini()}",
@@ -1694,7 +1708,7 @@ def main():
 
     logger.info("═══════════════════════════════════════")
     logger.info(f"  ⚡ KVN Killer v{VERSION} — {CODENAME}")
-    logger.info("  Custom Emoji Edition · Pure Single-Kill")
+    logger.info("  Full Custom Emoji Edition · Pure Kill")
     logger.info("  Authorize.net + Payrix")
     logger.info("═══════════════════════════════════════")
 
